@@ -38,7 +38,7 @@ logger = logging.getLogger('orchestration')
 class Event(object):
     """Implementation of an Event object: arrival of a request to a node"""
 
-    def __init__(self, time, receiver, service, node, flow_id, deadline, rtt_delay, status):
+    def __init__(self, time, receiver, service, node, flow_id, traffic_class, rtt_delay, status):
         """Constructor
         Parameters
         ----------
@@ -52,7 +52,8 @@ class Event(object):
         self.node = node
         self.service = service
         self.flow_id = flow_id
-        self.deadline = deadline 
+        #self.deadline = deadline 
+        self.traffic_class = traffic_class
         self.rtt_delay = rtt_delay
         self.status = status
 
@@ -566,8 +567,8 @@ class NetworkModel(object):
         delay_min = 0.001*2 + 0.020 # Remove*10
         delay_max = 0.202  #NOTE: make sure this is not too large; otherwise all requests go to cloud and are satisfied! 
 
-        aFile = open('services.txt', 'w')
-        aFile.write("# ServiceID\tserviceTime\tserviceDeadline\tDifference\n")
+        #aFile = open('services.txt', 'w')
+        #aFile.write("# ServiceID\tserviceTime\tserviceDeadline\tDifference\n")
 
         service_indx = 0
         deadlines = []
@@ -590,11 +591,11 @@ class NetworkModel(object):
             diff = deadline - service_time
 
             s = str(service_indx) + "\t" + str(service_time) + "\t" + str(deadline) + "\t" + str(diff) + "\n"
-            aFile.write(s)
+            #aFile.write(s)
             service_indx += 1
             s = Service(service_time, deadline)
             self.services.append(s)
-        aFile.close()
+        #aFile.close()
         #""" #END OF Generating Services
 
         self.compSpot = {node: ComputationalSpot(self, comp_size[node], service_size[node], self.services, node, sched_policy, None) 

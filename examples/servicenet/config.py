@@ -60,13 +60,13 @@ ALPHA = 0.75
 NETWORK_CACHE = 0.05
 
 # Number of content objects
-#N_CONTENTS = 100
-N_CONTENTS = 1000
+N_CONTENTS = 10
 
+# SERVICE POPULATION
 N_SERVICES = N_CONTENTS
 
 # Number of requests per second (over the whole network)
-NETWORK_REQUEST_RATE = 10000.0
+NETWORK_REQUEST_RATE = 100.0
 
 # Number of content requests generated to prepopulate the caches
 # These requests are not logged
@@ -83,6 +83,8 @@ N_MEASURED_REQUESTS = NETWORK_REQUEST_RATE*SECS*MINS
 # List of all implemented topologies
 # Topology implementations are located in ./icarus/scenarios/topology.py
 TOPOLOGIES =  ['TREE']
+N_CLASSES = 10
+RATES = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10] # A rate per service
 TREE_DEPTH = 3
 BRANCH_FACTOR = 2
 
@@ -115,7 +117,7 @@ default['workload'] = {'name':       'STATIONARY',
                        'n_contents': N_CONTENTS,
                        'n_warmup':   N_WARMUP_REQUESTS,
                        'n_measured': N_MEASURED_REQUESTS,
-                       'rate':       NETWORK_REQUEST_RATE,
+                       'rates':       RATES,
                        'seed':  0,
                        'n_services': N_SERVICES,
                        'alpha' : ALPHA
@@ -135,6 +137,9 @@ default['strategy']['n_replacements'] = NUM_REPLACEMENTS
 default['topology']['name'] = 'TREE'
 default['topology']['k'] = BRANCH_FACTOR
 default['topology']['h'] = TREE_DEPTH
+default['topology']['n_classes'] = N_CLASSES
+default['topology']['min_delay'] = 0.001
+default['topology']['max_delay'] = 0.020
 default['warmup_strategy']['name'] = WARMUP_STRATEGY
 
 # Create experiments multiplexing all desired parameters
@@ -172,7 +177,7 @@ for strategy in STRATEGIES:
         EXPERIMENT_QUEUE.append(experiment)
 #"""
 # Experiment comparing FIFO with EDF 
-#"""
+"""
 for schedule_policy in ['EDF', 'FIFO']:
     for strategy in STRATEGIES:
         experiment = copy.deepcopy(default)
@@ -182,9 +187,9 @@ for schedule_policy in ['EDF', 'FIFO']:
         experiment['desc'] = "strategy: %s, schedule policy: %s" \
                              % (strategy, str(schedule_policy))
         EXPERIMENT_QUEUE.append(experiment)
-#"""
+"""
 # Experiment with various zipf values
-#"""
+"""
 for alpha in [0.1, 0.25, 0.50, 0.75, 1.0]:
     for strategy in STRATEGIES:
         experiment = copy.deepcopy(default)
@@ -193,5 +198,5 @@ for alpha in [0.1, 0.25, 0.50, 0.75, 1.0]:
         experiment['desc'] = "strategy: %s, zipf: %s" \
                          % (strategy, str(alpha))
         EXPERIMENT_QUEUE.append(experiment)
-#"""
+"""
 # Experiment with various request rates (for sanity checking)

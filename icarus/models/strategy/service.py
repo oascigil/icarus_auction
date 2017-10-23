@@ -14,7 +14,8 @@ __all__ = [
        'StrictestDeadlineFirst',
        'MostFrequentlyUsed',
        'Hybrid',
-       'Lru'
+       'Lru', 
+       'StaticFifo'
            ]
 
 # Status codes
@@ -27,6 +28,72 @@ CONGESTION = 1
 SUCCESS = 2
 CLOUD = 3
 NO_INSTANCES = 4
+
+# Auction
+@register_strategy('STATIC_FIFO')
+class StaticFifo(Strategy):
+    """A distributed approach for service-centric routing
+    """
+    def __init__(self, view, controller, **kwargs):
+        super(StaticFifo, self).__init__(view,controller)
+        self.receivers = view.topology().receivers()
+        self.compSpots = self.view.service_nodes()
+        self.num_nodes = len(self.compSpots.keys())
+        self.num_services = self.view.num_services()
+        self.debug = debug
+    
+    @inheritdoc(Strategy)
+    def process_event(self, time, receiver, content, log, node, flow_id, deadline, rtt_delay, status):
+        service = content
+        
+        if receiver == node and status == REQUEST:
+            self.controller.start_session(time, receiver, service, log, flow_id, deadline)
+            source = self.view.content_source(service)
+            path = self.view.shortest_path(node, source)
+            next_node = path[1]
+            delay = self.view.path_delay(node, next_node)
+            self.controller.add_event(time+delay, receiver, service, next_node, flow_id, deadline, rtt_delay, REQUEST)
+            return
+        
+        if self.debug:
+            print ("\nEvent\n time: " + repr(time) + " receiver  " + repr(receiver) + " service " + repr(service) + " node " + repr(node) + " flow_id " + repr(flow_id) + " deadline " + repr(deadline) + " status " + repr(status)) 
+        
+        if node == source:
+            print ("Error: reached the source node: " + repr(node) + " this should not happen!")
+            return
+
+        compSpot = None
+        if self.view.has_computationalSpot(node):
+            compSpot = self.view.compSpot(node)
+        
+        if status == RESPONSE: 
+            # response is on its way back to the receiver
+            if node == receiver:
+                self.controller.end_session(True, time, flow_id) #TODO add flow_time
+                return
+            else:
+                path = self.view.shortest_path(node, receiver)
+                next_node = path[1]
+                delay = self.view.link_delay(node, next_node)
+                self.controller.add_event(time+delay, receiver, service, next_node, flow_id, deadline, rtt_delay, RESPONSE)
+
+        elif status == TASK_COMPLETE:
+            # forward the completed task
+            path = self.view.shortest_path(node, receiver)
+            next_node = path[1]
+            delay = self.view.link_delay(node, next_node)
+            self.controller.add_event(time+delay, receiver, service, next_node, flow_id, deadline, rtt_delay, RESPONSE)
+            
+        elif status == REQUEST:
+            # Processing a request
+            source = self.view.content_source(service)
+            path = self.view.shortest_path(node, source)
+            next_node = path[1]
+            ret, reason = compSpot.admit_task_auction(service, time, flow_id, deadline, receiver, rtt_delay, self.controller, self.debug)
+            if ret == False:
+                delay = self.view.path_delay(node, next_node)
+                rtt_delay += 2*delay
+                self.controller.add_event(time+delay, receiver, service, next_node, flow_id, deadline, rtt_delay, REQUEST)
 
 # LRU
 @register_strategy('LRU')

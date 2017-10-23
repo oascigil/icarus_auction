@@ -7,7 +7,7 @@
 ALLSPHINXOPTS	doc/Makefile	/^ALLSPHINXOPTS   = -d $(BUILDDIR)\/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SRCDIR)$/;"	m
 ALPHA	config.py	/^ALPHA = [0.6, 0.8, 1.0]$/;"	v
 ALPHA	examples/offpath-vs-onpath-caching/config.py	/^ALPHA = [0.6, 0.8, 1.0, 1.2]$/;"	v
-ALPHA	examples/servicenet/config.py	/^ALPHA = [0.00001]$/;"	v
+ALPHA	examples/servicenet/config.py	/^ALPHA = 0.75$/;"	v
 ALPHA	examples/servicenet/config_large.py	/^ALPHA = [0.7]$/;"	v
 ALPHA	examples/servicenet/config_small.py	/^ALPHA = [0.7]$/;"	v
 APIDOC	doc/Makefile	/^APIDOC        = sphinx-apidoc$/;"	m
@@ -38,10 +38,14 @@ CACHING_GRANULARITY	examples/offpath-vs-onpath-caching/config.py	/^CACHING_GRANU
 CACHING_GRANULARITY	examples/servicenet/config.py	/^CACHING_GRANULARITY = 'OBJECT'$/;"	v
 CACHING_GRANULARITY	examples/servicenet/config_large.py	/^CACHING_GRANULARITY = 'OBJECT'$/;"	v
 CACHING_GRANULARITY	examples/servicenet/config_small.py	/^CACHING_GRANULARITY = 'OBJECT'$/;"	v
+CLOUD	icarus/models/service/compSpot.py	/^CLOUD = 3$/;"	v
+CLOUD	icarus/models/strategy/service.py	/^CLOUD = 3$/;"	v
 CODEDIR	doc/Makefile	/^CODEDIR       = ..\/icarus$/;"	m
 COLORMAP	icarus/results/visualize.py	/^COLORMAP = {'source':    'blue',$/;"	v
 COMPUTATION_PLACEMENT	icarus/orchestration.py	/^                            CACHE_POLICY, WORKLOAD, DATA_COLLECTOR, STRATEGY$/;"	i
 COMPUTATION_PLACEMENT	icarus/registry.py	/^COMPUTATION_PLACEMENT = {}$/;"	v
+CONGESTION	icarus/models/service/compSpot.py	/^CONGESTION = 1$/;"	v
+CONGESTION	icarus/models/strategy/service.py	/^CONGESTION = 1$/;"	v
 CONTENT_PLACEMENT	icarus/orchestration.py	/^                            CACHE_POLICY, WORKLOAD, DATA_COLLECTOR, STRATEGY$/;"	i
 CONTENT_PLACEMENT	icarus/registry.py	/^CONTENT_PLACEMENT = {}$/;"	v
 Cache	icarus/models/cache/policies.py	/^class Cache(object):$/;"	c
@@ -53,6 +57,7 @@ CollectorProxy	icarus/execution/collectors.py	/^class CollectorProxy(DataCollect
 CollectorProxy	icarus/execution/engine.py	/^from icarus.execution import NetworkModel, NetworkView, NetworkController, CollectorProxy$/;"	i
 ComputationalSpot	icarus/execution/network.py	/^from icarus.models.service.compSpot import ComputationalSpot$/;"	i
 ComputationalSpot	icarus/models/service/compSpot.py	/^class ComputationalSpot(object):$/;"	c
+CpuInfo	icarus/models/service/compSpot.py	/^class CpuInfo(object):$/;"	c
 DATA_COLLECTOR	icarus/execution/engine.py	/^from icarus.registry import DATA_COLLECTOR, STRATEGY$/;"	i
 DATA_COLLECTOR	icarus/orchestration.py	/^                            CACHE_POLICY, WORKLOAD, DATA_COLLECTOR, STRATEGY$/;"	i
 DATA_COLLECTOR	icarus/registry.py	/^DATA_COLLECTOR = {}$/;"	v
@@ -62,6 +67,8 @@ DATA_COLLECTORS	examples/offpath-vs-onpath-caching/config.py	/^DATA_COLLECTORS =
 DATA_COLLECTORS	examples/servicenet/config.py	/^DATA_COLLECTORS = ['LATENCY']$/;"	v
 DATA_COLLECTORS	examples/servicenet/config_large.py	/^DATA_COLLECTORS = ['LATENCY']$/;"	v
 DATA_COLLECTORS	examples/servicenet/config_small.py	/^DATA_COLLECTORS = ['LATENCY']$/;"	v
+DEADLINE_MISSED	icarus/models/service/compSpot.py	/^DEADLINE_MISSED = 0$/;"	v
+DEADLINE_MISSED	icarus/models/strategy/service.py	/^DEADLINE_MISSED = 0$/;"	v
 DOC_DIR	Makefile	/^DOC_DIR = doc$/;"	m
 DataCollector	icarus/execution/collectors.py	/^class DataCollector(object):$/;"	c
 DiscreteDist	icarus/models/cache/systems.py	/^from icarus.tools import DiscreteDist$/;"	i
@@ -115,9 +122,9 @@ LeaveCopyDown	icarus/models/strategy/onpath.py	/^class LeaveCopyDown(Strategy):$
 LeaveCopyEverywhere	icarus/models/strategy/onpath.py	/^class LeaveCopyEverywhere(Strategy):$/;"	c
 LinkLoadCollector	icarus/execution/collectors.py	/^class LinkLoadCollector(DataCollector):$/;"	c
 LinkedSet	icarus/models/cache/policies.py	/^class LinkedSet(object):$/;"	c
+Lru	icarus/models/strategy/service.py	/^class Lru(Strategy):$/;"	c
 LruCache	icarus/models/cache/policies.py	/^class LruCache(Cache):$/;"	c
-MINS	examples/servicenet/config.py	/^MINS = 20$/;"	v
-MINS	examples/servicenet/config.py	/^MINS = 5$/;"	v
+MINS	examples/servicenet/config.py	/^MINS = 5.5$/;"	v
 MostFrequentlyUsed	icarus/models/strategy/service.py	/^class MostFrequentlyUsed(Strategy):$/;"	c
 NETWORK_CACHE	config.py	/^NETWORK_CACHE = [0.004, 0.002]$/;"	v
 NETWORK_CACHE	examples/offpath-vs-onpath-caching/config.py	/^NETWORK_CACHE = [0.004, 0.002, 0.01, 0.05]$/;"	v
@@ -125,13 +132,15 @@ NETWORK_CACHE	examples/servicenet/config.py	/^NETWORK_CACHE = 0.05$/;"	v
 NETWORK_CACHE	examples/servicenet/config_large.py	/^NETWORK_CACHE = [0.05]$/;"	v
 NETWORK_CACHE	examples/servicenet/config_small.py	/^NETWORK_CACHE = [0.05]$/;"	v
 NETWORK_REQUEST_RATE	examples/offpath-vs-onpath-caching/config.py	/^NETWORK_REQUEST_RATE = 12.0$/;"	v
-NETWORK_REQUEST_RATE	examples/servicenet/config.py	/^NETWORK_REQUEST_RATE = 1600.0$/;"	v
+NETWORK_REQUEST_RATE	examples/servicenet/config.py	/^NETWORK_REQUEST_RATE = 10000.0$/;"	v
 NETWORK_REQUEST_RATE	examples/servicenet/config_large.py	/^NETWORK_REQUEST_RATE = 1000.0$/;"	v
 NETWORK_REQUEST_RATE	examples/servicenet/config_small.py	/^NETWORK_REQUEST_RATE = 100.0$/;"	v
-NUM_REPLACEMENTS	examples/servicenet/config.py	/^NUM_REPLACEMENTS = 10$/;"	v
+NO_INSTANCES	icarus/models/service/compSpot.py	/^NO_INSTANCES = 4$/;"	v
+NO_INSTANCES	icarus/models/strategy/service.py	/^NO_INSTANCES = 4$/;"	v
+NUM_REPLACEMENTS	examples/servicenet/config.py	/^NUM_REPLACEMENTS = 10000$/;"	v
 N_CONTENTS	config.py	/^N_CONTENTS = 3*10**5$/;"	v
 N_CONTENTS	examples/offpath-vs-onpath-caching/config.py	/^N_CONTENTS = 3*10**5$/;"	v
-N_CONTENTS	examples/servicenet/config.py	/^N_CONTENTS = 100$/;"	v
+N_CONTENTS	examples/servicenet/config.py	/^N_CONTENTS = 1000$/;"	v
 N_CONTENTS	examples/servicenet/config_large.py	/^N_CONTENTS = 100$/;"	v
 N_CONTENTS	examples/servicenet/config_small.py	/^N_CONTENTS = 10$/;"	v
 N_MEASURED_REQUESTS	config.py	/^N_MEASURED_REQUESTS = 6*10**5$/;"	v
@@ -141,7 +150,7 @@ N_MEASURED_REQUESTS	examples/servicenet/config_large.py	/^N_MEASURED_REQUESTS = 
 N_MEASURED_REQUESTS	examples/servicenet/config_small.py	/^N_MEASURED_REQUESTS = 100*60*10 #60*30000 #100000$/;"	v
 N_PROCESSES	config.py	/^N_PROCESSES = cpu_count()$/;"	v
 N_PROCESSES	examples/offpath-vs-onpath-caching/config.py	/^N_PROCESSES = cpu_count()\/4$/;"	v
-N_PROCESSES	examples/servicenet/config.py	/^N_PROCESSES = 3 #cpu_count()$/;"	v
+N_PROCESSES	examples/servicenet/config.py	/^N_PROCESSES = 10 #cpu_count()$/;"	v
 N_PROCESSES	examples/servicenet/config_large.py	/^N_PROCESSES = 1 #cpu_count()$/;"	v
 N_PROCESSES	examples/servicenet/config_small.py	/^N_PROCESSES = 1 #cpu_count()$/;"	v
 N_REPLICATIONS	config.py	/^N_REPLICATIONS = 3$/;"	v
@@ -189,10 +198,16 @@ PathCache	icarus/models/cache/systems.py	/^class PathCache(object):$/;"	c
 PathStretchCollector	icarus/execution/collectors.py	/^class PathStretchCollector(DataCollector):$/;"	c
 PerfectLfuCache	icarus/models/cache/policies.py	/^class PerfectLfuCache(Cache):$/;"	c
 ProbCache	icarus/models/strategy/onpath.py	/^class ProbCache(Strategy):$/;"	c
-REPLACEMENT_INTERVAL	examples/servicenet/config.py	/^REPLACEMENT_INTERVAL = 20$/;"	v
+REPLACEMENT_INTERVAL	examples/servicenet/config.py	/^REPLACEMENT_INTERVAL = 30$/;"	v
 REPLACEMENT_INTERVAL	examples/servicenet/config_large.py	/^REPLACEMENT_INTERVAL = 10$/;"	v
 REPLACEMENT_INTERVAL	examples/servicenet/config_small.py	/^REPLACEMENT_INTERVAL = 10$/;"	v
+REQUEST	icarus/models/service/compSpot.py	/^REQUEST = 0$/;"	v
+REQUEST	icarus/models/strategy/service.py	/^REQUEST = 0$/;"	v
+REQUEST	icarus/scenarios/workload.py	/^REQUEST = 0$/;"	v
 REQ_RATE	config.py	/^REQ_RATE = 1.0$/;"	v
+RESPONSE	icarus/models/service/compSpot.py	/^RESPONSE = 1$/;"	v
+RESPONSE	icarus/models/strategy/service.py	/^RESPONSE = 1$/;"	v
+RESPONSE	icarus/scenarios/workload.py	/^RESPONSE = 1$/;"	v
 RESULTS_FORMAT	config.py	/^RESULTS_FORMAT = 'PICKLE'$/;"	v
 RESULTS_FORMAT	examples/offpath-vs-onpath-caching/config.py	/^RESULTS_FORMAT = 'PICKLE'$/;"	v
 RESULTS_FORMAT	examples/servicenet/config.py	/^RESULTS_FORMAT = 'PICKLE'$/;"	v
@@ -212,6 +227,7 @@ RandomChoice	icarus/models/strategy/onpath.py	/^class RandomChoice(Strategy):$/;
 ResultSet	icarus/orchestration.py	/^from icarus.results import ResultSet$/;"	i
 ResultSet	icarus/results/readwrite.py	/^class ResultSet(object):$/;"	c
 ResultSet	icarus/results/tests/test_resultset.py	/^from icarus.results import ResultSet$/;"	i
+SCHED_POLICY	examples/servicenet/config.py	/^SCHED_POLICY = 'EDF'$/;"	v
 SECS	examples/servicenet/config.py	/^SECS = 60 #do not change$/;"	v
 SHELL	Makefile	/^SHELL = \/bin\/sh$/;"	m
 SPHINXBUILD	doc/Makefile	/^SPHINXBUILD   = sphinx-build$/;"	m
@@ -233,6 +249,8 @@ STRATEGY_LEGEND	examples/offpath-vs-onpath-caching/plotresults.py	/^STRATEGY_LEG
 STRATEGY_LEGEND	examples/servicenet/plotresults.py	/^STRATEGY_LEGEND = {$/;"	v
 STRATEGY_STYLE	examples/offpath-vs-onpath-caching/plotresults.py	/^STRATEGY_STYLE = {$/;"	v
 STRATEGY_STYLE	examples/servicenet/plotresults.py	/^STRATEGY_STYLE = {$/;"	v
+SUCCESS	icarus/models/service/compSpot.py	/^SUCCESS = 2$/;"	v
+SUCCESS	icarus/models/strategy/service.py	/^SUCCESS = 2$/;"	v
 SegmentedLruCache	icarus/models/cache/policies.py	/^class SegmentedLruCache(Cache):$/;"	c
 SequenceNumber	icarus/orchestration.py	/^from icarus.util import SequenceNumber, timestr$/;"	i
 SequenceNumber	icarus/util.py	/^class SequenceNumber(object):$/;"	c
@@ -249,6 +267,9 @@ Strategy	icarus/models/strategy/offpath.py	/^from .base import Strategy$/;"	i
 Strategy	icarus/models/strategy/onpath.py	/^from .base import Strategy$/;"	i
 Strategy	icarus/models/strategy/service.py	/^from .base import Strategy$/;"	i
 StrictestDeadlineFirst	icarus/models/strategy/service.py	/^class StrictestDeadlineFirst(Strategy):$/;"	c
+TASK_COMPLETE	icarus/models/service/compSpot.py	/^TASK_COMPLETE = 2$/;"	v
+TASK_COMPLETE	icarus/models/strategy/service.py	/^TASK_COMPLETE = 2$/;"	v
+TASK_COMPLETE	icarus/scenarios/workload.py	/^TASK_COMPLETE = 2$/;"	v
 TOPOLOGIES	config.py	/^TOPOLOGIES =  [$/;"	v
 TOPOLOGIES	examples/offpath-vs-onpath-caching/config.py	/^TOPOLOGIES =  [$/;"	v
 TOPOLOGIES	examples/servicenet/config.py	/^TOPOLOGIES =  ['TREE']$/;"	v
@@ -260,6 +281,7 @@ TOPOLOGY_RESOURCES_DIR	icarus/scenarios/topology.py	/^TOPOLOGY_RESOURCES_DIR = p
 TREE_DEPTH	examples/servicenet/config.py	/^TREE_DEPTH = 3$/;"	v
 TREE_DEPTH	examples/servicenet/config_large.py	/^TREE_DEPTH = 3$/;"	v
 TREE_DEPTH	examples/servicenet/config_small.py	/^TREE_DEPTH = 3$/;"	v
+Task	icarus/models/service/compSpot.py	/^class Task(object):$/;"	c
 TestArrayCache	icarus/models/cache/tests/test_systems.py	/^class TestArrayCache(unittest.TestCase):$/;"	c
 TestCache	icarus/models/cache/tests/test_policies.py	/^class TestCache(unittest.TestCase):$/;"	c
 TestCacheHitRatioCollector	icarus/execution/tests/test_collectors.py	/^class TestCacheHitRatioCollector(unittest.TestCase):$/;"	c
@@ -393,8 +415,8 @@ __init__	icarus/execution/collectors.py	/^    def __init__(self, view, req_size=
 __init__	icarus/execution/network.py	/^    def __init__(self, model):$/;"	m	class:NetworkController
 __init__	icarus/execution/network.py	/^    def __init__(self, model):$/;"	m	class:NetworkView
 __init__	icarus/execution/network.py	/^    def __init__(self, service_time=None, deadline=None):$/;"	m	class:Service
-__init__	icarus/execution/network.py	/^    def __init__(self, time, receiver, service, node, flow_id, deadline, response):$/;"	m	class:Event
-__init__	icarus/execution/network.py	/^    def __init__(self, topology, cache_policy, n_services, rate, seed=0, shortest_path=None):$/;"	m	class:NetworkModel
+__init__	icarus/execution/network.py	/^    def __init__(self, time, receiver, service, node, flow_id, deadline, rtt_delay, status):$/;"	m	class:Event
+__init__	icarus/execution/network.py	/^    def __init__(self, topology, cache_policy, sched_policy, n_services, rate, seed=0, shortest_path=None):$/;"	m	class:NetworkModel
 __init__	icarus/models/cache/policies.py	/^        def __init__(self, val, up=None, down=None):$/;"	m	class:LinkedSet._Node
 __init__	icarus/models/cache/policies.py	/^    def __init__(self, iterable=[]):$/;"	m	class:LinkedSet
 __init__	icarus/models/cache/policies.py	/^    def __init__(self, maxlen, **kwargs):$/;"	m	class:LruCache
@@ -411,7 +433,9 @@ __init__	icarus/models/cache/systems.py	/^    def __init__(self, caches, **kwarg
 __init__	icarus/models/cache/systems.py	/^    def __init__(self, caches, weights=None, **kwargs):$/;"	m	class:ArrayCache
 __init__	icarus/models/cache/systems.py	/^    def __init__(self, leaf_caches, root_cache, **kwargs):$/;"	m	class:TreeCache
 __init__	icarus/models/cache/systems.py	/^    def __init__(self, maxlen, policy='LRU', nodes=4, f_map=None,$/;"	m	class:ShardedCache
-__init__	icarus/models/service/compSpot.py	/^    def __init__(self, numOfVMs, n_services, services, node, dist=None, measurement_interval = 5, ranking_interval = 20):$/;"	m	class:ComputationalSpot
+__init__	icarus/models/service/compSpot.py	/^    def __init__(self, model, numOfCores, n_services, services, node, sched_policy = "EDF", dist=None):$/;"	m	class:ComputationalSpot
+__init__	icarus/models/service/compSpot.py	/^    def __init__(self, numOfCores):$/;"	m	class:CpuInfo
+__init__	icarus/models/service/compSpot.py	/^    def __init__(self, time, deadline, rtt_delay, node, service, service_time, flow_id, receiver, finishTime=None):$/;"	m	class:Task
 __init__	icarus/models/strategy/base.py	/^    def __init__(self, view, controller, **kwargs):$/;"	m	class:NoCache
 __init__	icarus/models/strategy/base.py	/^    def __init__(self, view, controller, **kwargs):$/;"	m	class:Strategy
 __init__	icarus/models/strategy/hashrouting.py	/^    def __init__(self, view, controller, **kwargs):$/;"	m	class:BaseHashrouting
@@ -433,9 +457,10 @@ __init__	icarus/models/strategy/onpath.py	/^    def __init__(self, view, control
 __init__	icarus/models/strategy/onpath.py	/^    def __init__(self, view, controller, p=0.2, **kwargs):$/;"	m	class:RandomBernoulli
 __init__	icarus/models/strategy/onpath.py	/^    def __init__(self, view, controller, t_tw=10):$/;"	m	class:ProbCache
 __init__	icarus/models/strategy/onpath.py	/^    def __init__(self, view, controller, use_ego_betw=False, **kwargs):$/;"	m	class:CacheLessForMore
+__init__	icarus/models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=10, debug=False, n_replacements=1, **kwargs):$/;"	m	class:Hybrid
 __init__	icarus/models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=10, debug=False, n_replacements=1, **kwargs):$/;"	m	class:MostFrequentlyUsed
 __init__	icarus/models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=10, debug=False, n_replacements=1, **kwargs):$/;"	m	class:StrictestDeadlineFirst
-__init__	icarus/models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=10, debug=False, sat_weight = 1, usage_weight=0, n_replacements=1, **kwargs):$/;"	m	class:Hybrid
+__init__	icarus/models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=10, debug=False, p = 0.5, **kwargs):$/;"	m	class:Lru
 __init__	icarus/orchestration.py	/^    def __init__(self, settings, summary_freq=4):$/;"	m	class:Orchestrator
 __init__	icarus/results/readwrite.py	/^    def __init__(self, attr=None):$/;"	m	class:ResultSet
 __init__	icarus/scenarios/workload.py	/^    def __init__(self, topology, n_contents, alpha, beta=0, rate=1.0,$/;"	m	class:StationaryWorkload
@@ -493,8 +518,11 @@ abc	icarus/models/service/compSpot.py	/^import abc$/;"	i
 abc	icarus/models/strategy/base.py	/^import abc$/;"	i
 absolute_import	icarus/__init__.py	/^from __future__ import absolute_import$/;"	i
 add	icarus/results/readwrite.py	/^    def add(self, parameters, results):$/;"	m	class:ResultSet
-add_event	icarus/execution/network.py	/^    def add_event(self, time, receiver, service, node, flow_id, deadline, response):$/;"	m	class:NetworkController
+add_event	icarus/execution/network.py	/^    def add_event(self, time, receiver, service, node, flow_id, deadline, rtt_delay, status):$/;"	m	class:NetworkController
 add_module_names	doc/source/conf.py	/^add_module_names = False$/;"	v
+admit_task	icarus/models/service/compSpot.py	/^    def admit_task(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
+admit_task_EDF	icarus/models/service/compSpot.py	/^    def admit_task_EDF(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
+admit_task_FIFO	icarus/models/service/compSpot.py	/^    def admit_task_FIFO(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
 algorithms	icarus/scenarios/test/test_algorithms.py	/^import icarus.scenarios as algorithms$/;"	i
 all_pairs_shortest_paths	icarus/execution/network.py	/^    def all_pairs_shortest_paths(self):$/;"	m	class:NetworkView
 alpha	icarus/tools/stats.py	/^    def alpha(self):$/;"	m	class:TruncatedZipfDist
@@ -510,13 +538,13 @@ argparse	scripts/mergeresults.py	/^import argparse$/;"	i
 argparse	scripts/printresults.py	/^import argparse$/;"	i
 assign	icarus/util.py	/^    def assign(self):$/;"	m	class:SequenceNumber
 assign_points_to_clusters	icarus/scenarios/algorithms.py	/^    def assign_points_to_clusters(medoids, distances):$/;"	f	function:pam
+assign_task_to_core	icarus/models/service/compSpot.py	/^    def assign_task_to_core(self, core_indx, fin_time, service):$/;"	m	class:CpuInfo
 attach_collector	icarus/execution/network.py	/^    def attach_collector(self, collector):$/;"	m	class:NetworkController
 author	doc/source/conf.py	/^author = icarus.__author__$/;"	v
 authoritative_cache	icarus/models/strategy/hashrouting.py	/^    def authoritative_cache(self, content, cluster=None):$/;"	m	class:BaseHashrouting
 betweenness_centrality_cache_placement	icarus/scenarios/cacheplacement.py	/^def betweenness_centrality_cache_placement(topology, cache_budget, **kwargs):$/;"	f
 bottom	icarus/models/cache/policies.py	/^    def bottom(self):$/;"	m	class:LinkedSet
-budgets	examples/servicenet/config.py	/^budgets = [N_SERVICES\/2, N_SERVICES, 3*N_SERVICES\/2, 2*N_SERVICES, 5*N_SERVICES\/2, 3*N_SERVICES]$/;"	v
-budgets	examples/servicenet/config.py	/^budgets = [N_SERVICES]$/;"	v
+budgets	examples/servicenet/config.py	/^budgets = [N_SERVICES\/8, N_SERVICES\/4, N_SERVICES\/2, 0.75*N_SERVICES, N_SERVICES, 2*N_SERVICES]$/;"	v
 build_topology	icarus/execution/tests/test_network.py	/^    def build_topology(cls):$/;"	m	class:TestNetworkMvc
 cache	icarus/models/cache/tests/test_policies.py	/^import icarus.models as cache$/;"	i
 cache	icarus/models/cache/tests/test_systems.py	/^import icarus.models as cache$/;"	i
@@ -539,7 +567,7 @@ can_import	icarus/util.py	/^def can_import(statement):$/;"	f
 cdf	icarus/execution/collectors.py	/^from icarus.tools import cdf$/;"	i
 cdf	icarus/tools/stats.py	/^    def cdf(self):$/;"	m	class:DiscreteDist
 cdf	icarus/tools/stats.py	/^def cdf(data):$/;"	f
-central_computation_placement	icarus/scenarios/compSpotplacement.py	/^def central_computation_placement(topology, computation_budget, n_services, **kwargs):$/;"	f
+central_computation_placement	icarus/scenarios/compSpotplacement.py	/^def central_computation_placement(topology, computation_budget, service_budget, **kwargs):$/;"	f
 che_cache_hit_ratio	icarus/tools/cacheperf.py	/^def che_cache_hit_ratio(pdf, cache_size):$/;"	f
 che_cache_hit_ratio_generalized	icarus/tools/cacheperf.py	/^def che_cache_hit_ratio_generalized(pdf, cache_size, policy='LRU', **policy_args):$/;"	f
 che_cache_hit_ratio_simplified	icarus/tools/cacheperf.py	/^def che_cache_hit_ratio_simplified(pdf, cache_size):$/;"	f
@@ -699,13 +727,18 @@ end_session	icarus/execution/collectors.py	/^    def end_session(self, success=T
 end_session	icarus/execution/network.py	/^    def end_session(self, success=True, timestamp=0, flow_id=0):$/;"	m	class:NetworkController
 eventQ	icarus/execution/network.py	/^    def eventQ(self):$/;"	m	class:NetworkView
 exclude_patterns	doc/source/conf.py	/^exclude_patterns = []$/;"	v
-exec_experiment	icarus/execution/engine.py	/^def exec_experiment(topology, workload, netconf, strategy, cache_policy, collectors, warmup_strategy):$/;"	f
+exec_experiment	icarus/execution/engine.py	/^def exec_experiment(topology, workload, netconf, strategy, cache_policy, collectors, warmup_strategy, sched_policy = {'name': 'EDF'}):$/;"	f
 exec_experiment	icarus/orchestration.py	/^from icarus.execution import exec_experiment$/;"	i
+execute_service	icarus/execution/collectors.py	/^    def execute_service(self, flow_id, service, node, timestamp, is_cloud):$/;"	m	class:CollectorProxy
+execute_service	icarus/execution/collectors.py	/^    def execute_service(self, flow_id, service, node, timestamp, is_cloud):$/;"	m	class:DataCollector
+execute_service	icarus/execution/collectors.py	/^    def execute_service(self, flow_id, service, node, timestamp, is_cloud):$/;"	m	class:LatencyCollector
+execute_service	icarus/execution/network.py	/^    def execute_service(self, flow_id, service, node, timestamp, is_cloud):$/;"	m	class:NetworkController
 execution	icarus/execution/tests/test_network.py	/^import icarus.execution.network as network$/;"	i
 experiment	config.py	/^                experiment = copy.deepcopy(default)$/;"	v
 experiment	examples/lce-vs-probcache/config.py	/^    experiment = copy.deepcopy(default)$/;"	v
 experiment	examples/offpath-vs-onpath-caching/config.py	/^                experiment = copy.deepcopy(default)$/;"	v
-experiment	examples/servicenet/config.py	/^            experiment = copy.deepcopy(default)$/;"	v
+experiment	examples/servicenet/config.py	/^        experiment = copy.deepcopy(default)$/;"	v
+experiment	examples/servicenet/config.py	/^    experiment = copy.deepcopy(default)$/;"	v
 experiment	examples/servicenet/config_large.py	/^            experiment = copy.deepcopy(default)$/;"	v
 experiment	examples/servicenet/config_small.py	/^            experiment = copy.deepcopy(default)$/;"	v
 experiment_callback	icarus/orchestration.py	/^    def experiment_callback(self, args):$/;"	m	class:Orchestrator
@@ -751,12 +784,12 @@ get	icarus/models/cache/systems.py	/^    def get(self, k):$/;"	m	class:PathCache
 get	icarus/models/cache/systems.py	/^    def get(self, k):$/;"	m	class:ShardedCache
 get	icarus/models/cache/systems.py	/^    def get(self, k):$/;"	m	class:TreeCache
 get	icarus/util.py	/^    def get(self, name):$/;"	m	class:Settings
-getFinishTime	icarus/models/service/compSpot.py	/^    def getFinishTime(self, service, time):$/;"	m	class:ComputationalSpot
-getIdleTime	icarus/models/service/compSpot.py	/^    def getIdleTime(self, indx, time):$/;"	m	class:ComputationalSpot
-getVirtualIdleTime	icarus/models/service/compSpot.py	/^    def getVirtualIdleTime(self, service, time):$/;"	m	class:ComputationalSpot
-getVirtualTailFinishTime	icarus/models/service/compSpot.py	/^    def getVirtualTailFinishTime(self, service, time):$/;"	m	class:ComputationalSpot
-get_content	icarus/execution/network.py	/^    def get_content(self, node):$/;"	m	class:NetworkController
+getIdleTime	icarus/models/service/compSpot.py	/^    def getIdleTime(self, time):$/;"	m	class:ComputationalSpot
+get_available_core	icarus/models/service/compSpot.py	/^    def get_available_core(self, time):$/;"	m	class:CpuInfo
+get_content	icarus/execution/network.py	/^    def get_content(self, node, content=0):$/;"	m	class:NetworkController
 get_content_local_cache	icarus/execution/network.py	/^    def get_content_local_cache(self, node):$/;"	m	class:NetworkController
+get_idleTime	icarus/models/service/compSpot.py	/^    def get_idleTime(self, time):$/;"	m	class:CpuInfo
+get_next_available_core	icarus/models/service/compSpot.py	/^    def get_next_available_core(self):$/;"	m	class:CpuInfo
 get_sources	icarus/scenarios/contentplacement.py	/^def get_sources(topology):$/;"	f
 getcwd	test.py	/^from os import path, getcwd$/;"	i
 getval	icarus/util.py	/^    def getval(self, path):$/;"	m	class:Tree
@@ -776,7 +809,6 @@ has	icarus/models/cache/systems.py	/^    def has(self, k):$/;"	m	class:ArrayCach
 has	icarus/models/cache/systems.py	/^    def has(self, k):$/;"	m	class:PathCache
 has	icarus/models/cache/systems.py	/^    def has(self, k):$/;"	m	class:ShardedCache
 has	icarus/models/cache/systems.py	/^    def has(self, k):$/;"	m	class:TreeCache
-has	icarus/models/service/compSpot.py	/^    def has(self, service):$/;"	m	class:ComputationalSpot
 has_cache	icarus/execution/network.py	/^    def has_cache(self, node):$/;"	m	class:NetworkView
 has_computationalSpot	icarus/execution/network.py	/^    def has_computationalSpot(self, node):$/;"	m	class:NetworkView
 has_service	icarus/execution/network.py	/^    def has_service(self, node, service):$/;"	m	class:NetworkView
@@ -816,6 +848,7 @@ inheritdoc	icarus/models/strategy/onpath.py	/^from icarus.util import inheritdoc
 inheritdoc	icarus/models/strategy/service.py	/^from icarus.util import inheritdoc, path_links$/;"	i
 inheritdoc	icarus/util.py	/^def inheritdoc(cls):$/;"	f
 initialise_metrics	icarus/models/strategy/service.py	/^    def initialise_metrics(self):$/;"	m	class:Hybrid
+initialise_metrics	icarus/models/strategy/service.py	/^    def initialise_metrics(self):$/;"	m	class:Lru
 initialise_metrics	icarus/models/strategy/service.py	/^    def initialise_metrics(self):$/;"	m	class:MostFrequentlyUsed
 initialise_metrics	icarus/models/strategy/service.py	/^    def initialise_metrics(self):$/;"	m	class:StrictestDeadlineFirst
 insert_above	icarus/models/cache/policies.py	/^    def insert_above(self, i, k):$/;"	m	class:LinkedSet
@@ -969,7 +1002,6 @@ path_links	icarus/util.py	/^def path_links(path):$/;"	f
 paths	icarus/util.py	/^    def paths(self):$/;"	m	class:Tree
 pdf	icarus/tools/stats.py	/^    def pdf(self):$/;"	m	class:DiscreteDist
 pdf	icarus/tools/stats.py	/^def pdf(data, n_bins):$/;"	f
-perform_measurement	icarus/models/service/compSpot.py	/^    def perform_measurement(self, service, time, deadline):$/;"	m	class:ComputationalSpot
 pickle	icarus/results/readwrite.py	/^    import cPickle as pickle$/;"	i
 pickle	icarus/results/readwrite.py	/^    import pickle$/;"	i
 pickle	icarus/test/test_tree.py	/^    import cPickle as pickle$/;"	i
@@ -1011,11 +1043,15 @@ position	icarus/models/cache/systems.py	/^    def position(self, k):$/;"	m	class
 position	icarus/models/cache/systems.py	/^    def position(self, k):$/;"	m	class:PathCache
 position	icarus/models/cache/systems.py	/^    def position(self, k):$/;"	m	class:TreeCache
 printTree	examples/servicenet/plotresults.py	/^def printTree(tree, d = 0):$/;"	f
+print_budget_experiment	examples/servicenet/plotresults.py	/^def print_budget_experiment(lst):$/;"	f
+print_core_status	icarus/models/service/compSpot.py	/^    def print_core_status(self):$/;"	m	class:CpuInfo
 print_function	icarus/models/strategy/service.py	/^from __future__ import print_function$/;"	i
+print_lru_probability_results	examples/servicenet/plotresults.py	/^def print_lru_probability_results(lst):$/;"	f
 print_results	scripts/printresults.py	/^def print_results(path):$/;"	f
-print_stats	icarus/models/service/compSpot.py	/^    def print_stats(self):$/;"	m	class:ComputationalSpot
-print_stats	icarus/models/strategy/service.py	/^    def print_stats(self):$/;"	m	class:MostFrequentlyUsed
-print_stats	icarus/models/strategy/service.py	/^    def print_stats(self):$/;"	m	class:StrictestDeadlineFirst
+print_scheduling_experiments	examples/servicenet/plotresults.py	/^def print_scheduling_experiments(lst):$/;"	f
+print_strategies_performance	examples/servicenet/plotresults.py	/^def print_strategies_performance(lst):$/;"	f
+print_task	icarus/models/service/compSpot.py	/^    def print_task(self):$/;"	m	class:Task
+print_zipf_experiment	examples/servicenet/plotresults.py	/^def print_zipf_experiment(lst):$/;"	f
 process_event	icarus/models/strategy/base.py	/^    def process_event(self, time, receiver, content, log):$/;"	m	class:NoCache
 process_event	icarus/models/strategy/base.py	/^    def process_event(self, time, receiver, content, log, **kwargs):$/;"	m	class:Strategy
 process_event	icarus/models/strategy/hashrouting.py	/^    def process_event(self, time, receiver, content, log):$/;"	m	class:BaseHashrouting
@@ -1034,9 +1070,10 @@ process_event	icarus/models/strategy/onpath.py	/^    def process_event(self, tim
 process_event	icarus/models/strategy/onpath.py	/^    def process_event(self, time, receiver, content, log):$/;"	m	class:ProbCache
 process_event	icarus/models/strategy/onpath.py	/^    def process_event(self, time, receiver, content, log):$/;"	m	class:RandomBernoulli
 process_event	icarus/models/strategy/onpath.py	/^    def process_event(self, time, receiver, content, log):$/;"	m	class:RandomChoice
-process_event	icarus/models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, deadline, response):$/;"	m	class:Hybrid
-process_event	icarus/models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, deadline, response):$/;"	m	class:MostFrequentlyUsed
-process_event	icarus/models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, deadline, response):$/;"	m	class:StrictestDeadlineFirst
+process_event	icarus/models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, deadline, rtt_delay, status):$/;"	m	class:Hybrid
+process_event	icarus/models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, deadline, rtt_delay, status):$/;"	m	class:Lru
+process_event	icarus/models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, deadline, rtt_delay, status):$/;"	m	class:MostFrequentlyUsed
+process_event	icarus/models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, deadline, rtt_delay, status):$/;"	m	class:StrictestDeadlineFirst
 project	doc/source/conf.py	/^project = u'Icarus'$/;"	v
 proportions_confidence_interval	icarus/tools/stats.py	/^def proportions_confidence_interval(data, confidence):$/;"	f
 purge	icarus/models/cache/policies.py	/^    def purge():$/;"	f	function:ttl_cache
@@ -1058,7 +1095,7 @@ put	icarus/models/cache/systems.py	/^    def put(self, k):$/;"	m	class:ArrayCach
 put	icarus/models/cache/systems.py	/^    def put(self, k):$/;"	m	class:PathCache
 put	icarus/models/cache/systems.py	/^    def put(self, k):$/;"	m	class:ShardedCache
 put	icarus/models/cache/systems.py	/^    def put(self, k):$/;"	m	class:TreeCache
-put_content	icarus/execution/network.py	/^    def put_content(self, node):$/;"	m	class:NetworkController
+put_content	icarus/execution/network.py	/^    def put_content(self, node, content=0):$/;"	m	class:NetworkController
 put_content_local_cache	icarus/execution/network.py	/^    def put_content_local_cache(self, node):$/;"	m	class:NetworkController
 pygments_style	doc/source/conf.py	/^pygments_style = 'sphinx'$/;"	v
 pytest	test.py	/^        import pytest$/;"	i
@@ -1068,6 +1105,7 @@ random	icarus/models/cache/policies.py	/^import random$/;"	i
 random	icarus/models/cache/systems.py	/^import random$/;"	i
 random	icarus/models/service/compSpot.py	/^import random$/;"	i
 random	icarus/models/strategy/onpath.py	/^import random$/;"	i
+random	icarus/models/strategy/service.py	/^import random$/;"	i
 random	icarus/scenarios/algorithms.py	/^import random$/;"	i
 random	icarus/scenarios/cacheplacement.py	/^import random$/;"	i
 random	icarus/scenarios/contentplacement.py	/^import random$/;"	i
@@ -1080,7 +1118,7 @@ read	scripts/mergeresults.py	/^read = RESULTS_READER['PICKLE']$/;"	v
 read	scripts/printresults.py	/^read = RESULTS_READER['PICKLE']$/;"	v
 read_from	icarus/util.py	/^    def read_from(self, path, freeze=False):$/;"	m	class:Settings
 read_results_pickle	icarus/results/readwrite.py	/^def read_results_pickle(path):$/;"	f
-reassign_vm	icarus/models/service/compSpot.py	/^    def reassign_vm(self, vm, service, debug):$/;"	m	class:ComputationalSpot
+reassign_vm	icarus/models/service/compSpot.py	/^    def reassign_vm(self, serviceToReplace, newService, debug):$/;"	m	class:ComputationalSpot
 receivers	icarus/scenarios/topology.py	/^    def receivers(self):$/;"	m	class:IcnTopology
 register_cache_placement	icarus/registry.py	/^register_cache_placement = register_decorator(CACHE_PLACEMENT)$/;"	v
 register_cache_placement	icarus/scenarios/cacheplacement.py	/^from icarus.registry import register_cache_placement$/;"	i
@@ -1143,8 +1181,6 @@ request_hop	icarus/execution/collectors.py	/^    def request_hop(self, u, v, mai
 request_hop	icarus/execution/collectors.py	/^    def request_hop(self, u, v, main_path=True):$/;"	m	class:LinkLoadCollector
 request_hop	icarus/execution/collectors.py	/^    def request_hop(self, u, v, main_path=True):$/;"	m	class:PathStretchCollector
 reserve_local_cache	icarus/execution/network.py	/^    def reserve_local_cache(self, ratio=0.1):$/;"	m	class:NetworkController
-resetIdleTime	icarus/models/service/compSpot.py	/^    def resetIdleTime(self, indx):$/;"	m	class:ComputationalSpot
-resetVirtualIdleTime	icarus/models/service/compSpot.py	/^    def resetVirtualIdleTime(self, service):$/;"	m	class:ComputationalSpot
 restore_link	icarus/execution/network.py	/^    def restore_link(self, u, v, recompute_paths=True):$/;"	m	class:NetworkController
 restore_node	icarus/execution/network.py	/^    def restore_node(self, v, recompute_paths=True):$/;"	m	class:NetworkController
 results	icarus/execution/collectors.py	/^    def results(self):$/;"	m	class:CacheHitRatioCollector
@@ -1159,13 +1195,15 @@ run	examples/servicenet/plotresults.py	/^def run(config, results, plotdir):$/;"	
 run	icarus.py	/^    from icarus.run import run$/;"	i
 run	icarus/orchestration.py	/^    def run(self):$/;"	m	class:Orchestrator
 run	icarus/run.py	/^def run(config_file, output, config_override):$/;"	f
-runVirtualService	icarus/models/service/compSpot.py	/^    def runVirtualService(self, service, time, deadline, return_delay):$/;"	m	class:ComputationalSpot
 run_scenario	icarus/orchestration.py	/^def run_scenario(settings, params, curr_exp, n_exp):$/;"	f
 rv	icarus/tools/stats.py	/^    def rv(self):$/;"	m	class:DiscreteDist
 s	icarus/__init__.py	/^        exec('import %s' % m)$/;"	i
-schedule_service	icarus/models/service/compSpot.py	/^    def schedule_service(self, service, vm_indx, time):$/;"	m	class:ComputationalSpot
+schedule	icarus/models/service/compSpot.py	/^    def schedule(self, time):$/;"	m	class:ComputationalSpot
 scipy	icarus/tools/stats.py	/^import scipy.stats as ss$/;"	i
 scipy	icarus/tools/traces.py	/^        raise ImportError("Cannot import scipy.optimize minimize_scalar. "$/;"	i
+searchDict	examples/servicenet/plotresults.py	/^def searchDict(lst, category, attr_value_pairs, num_pairs, collector, subtype):$/;"	f
+searchDictMultipleCat	examples/servicenet/plotresults.py	/^def searchDictMultipleCat(lst, category_list, attr_value_pairs, num_pairs, collector, subtype):$/;"	f
+searchDictMultipleCat1	examples/servicenet/plotresults.py	/^def searchDictMultipleCat1(lst, category_list, attr_value_list, num_pairs, collector, subtype):$/;"	f
 server_hit	icarus/execution/collectors.py	/^    def server_hit(self, node):$/;"	m	class:CacheHitRatioCollector
 server_hit	icarus/execution/collectors.py	/^    def server_hit(self, node):$/;"	m	class:CollectorProxy
 server_hit	icarus/execution/collectors.py	/^    def server_hit(self, node):$/;"	m	class:DataCollector
@@ -1216,6 +1254,7 @@ setval	icarus/util.py	/^    def setval(self, path, val):$/;"	m	class:Tree
 shortest_path	icarus/execution/network.py	/^    def shortest_path(self, s, t):$/;"	m	class:NetworkView
 signal	icarus/orchestration.py	/^import signal$/;"	i
 signal	icarus/run.py	/^import signal$/;"	i
+simulate_execution	icarus/models/service/compSpot.py	/^    def simulate_execution(self, aTask, time, debug):$/;"	m	class:ComputationalSpot
 solve_3rd_order_equation	icarus/tools/cacheperf.py	/^    def solve_3rd_order_equation(a, b, c, d):$/;"	f	function:laoutaris_characteristic_time
 source_suffix	doc/source/conf.py	/^source_suffix = '.rst'$/;"	v
 sources	icarus/scenarios/topology.py	/^    def sources(self):$/;"	m	class:IcnTopology
@@ -1500,12 +1539,12 @@ topology_garr2	icarus/scenarios/topology.py	/^def topology_garr2(**kwargs):$/;"	
 topology_geant	icarus/scenarios/topology.py	/^def topology_geant(**kwargs):$/;"	f
 topology_geant2	icarus/scenarios/topology.py	/^def topology_geant2(**kwargs):$/;"	f
 topology_mesh	icarus/scenarios/topology.py	/^def topology_mesh(n, m, delay_int=1, delay_ext=5, **kwargs):$/;"	f
-topology_path	icarus/scenarios/topology.py	/^def topology_path(n, delay=1, **kwargs):$/;"	f
+topology_path	icarus/scenarios/topology.py	/^def topology_path(n, delay=1, n_receivers, **kwargs):$/;"	f
 topology_ring	icarus/scenarios/topology.py	/^def topology_ring(n, delay_int=1, delay_ext=5, **kwargs):$/;"	f
 topology_rocketfuel_latency	icarus/scenarios/topology.py	/^def topology_rocketfuel_latency(asn, source_ratio=1.0, ext_delay=EXTERNAL_LINK_DELAY, **kwargs):$/;"	f
 topology_tiscali	icarus/scenarios/topology.py	/^def topology_tiscali(**kwargs):$/;"	f
 topology_tiscali2	icarus/scenarios/topology.py	/^def topology_tiscali2(**kwargs):$/;"	f
-topology_tree	icarus/scenarios/topology.py	/^def topology_tree(k, h, delay=0.005, **kwargs):$/;"	f
+topology_tree	icarus/scenarios/topology.py	/^def topology_tree(k, h, delay=0.020, **kwargs):$/;"	f
 topology_wide	icarus/scenarios/topology.py	/^def topology_wide(**kwargs):$/;"	f
 trace_driven_cache_hit_ratio	icarus/tools/cacheperf.py	/^def trace_driven_cache_hit_ratio(workload, cache, warmup_ratio=0.25):$/;"	f
 trace_stats	icarus/tools/traces.py	/^def trace_stats(data):$/;"	f
@@ -1515,7 +1554,7 @@ ttl_cache	icarus/models/cache/policies.py	/^def ttl_cache(cache, f_time):$/;"	f
 ttl_keyval_cache	icarus/models/cache/policies.py	/^def ttl_keyval_cache():$/;"	f
 types	icarus/tools/traces.py	/^import types$/;"	i
 uniform_cache_placement	icarus/scenarios/cacheplacement.py	/^def uniform_cache_placement(topology, cache_budget, **kwargs):$/;"	f
-uniform_computation_placement	icarus/scenarios/compSpotplacement.py	/^def uniform_computation_placement(topology, computation_budget, **kwargs):$/;"	f
+uniform_computation_placement	icarus/scenarios/compSpotplacement.py	/^def uniform_computation_placement(topology, computation_budget, service_budget, **kwargs):$/;"	f
 uniform_consolidated_cache_placement	icarus/scenarios/cacheplacement.py	/^def uniform_consolidated_cache_placement(topology, cache_budget, spread=0.5,$/;"	f
 uniform_content_placement	icarus/scenarios/contentplacement.py	/^def uniform_content_placement(topology, contents, seed=None):$/;"	f
 uniform_sit_cache_placement	icarus/scenarios/cacheplacement.py	/^def uniform_sit_cache_placement(topology, cache_budget, n_contents, **kwargs):$/;"	f
@@ -1536,7 +1575,7 @@ unittest	icarus/tools/tests/test_cacheperf.py	/^import unittest$/;"	i
 unittest	icarus/tools/tests/test_stats.py	/^import unittest$/;"	i
 unittest	icarus/tools/tests/test_traces.py	/^import unittest$/;"	i
 update	icarus/util.py	/^    def update(self, e):$/;"	m	class:Tree
-update_counters	icarus/models/service/compSpot.py	/^    def update_counters(self, time):$/;"	m	class:ComputationalSpot
+update_core_status	icarus/models/service/compSpot.py	/^    def update_core_status(self, time):$/;"	m	class:CpuInfo
 util	icarus/test/test_util.py	/^import icarus.util as util$/;"	i
 value	icarus/models/cache/policies.py	/^    def value(k, *args, **kwargs):$/;"	f	function:keyval_cache
 verify_random_assignment	icarus/scenarios/test/test_cacheplacement.py	/^    def verify_random_assignment(self, topo, cache_budget, cache_nodes):$/;"	m	class:TestRadomCachePlacement

@@ -82,6 +82,9 @@ class CpuInfo(object):
         return self.idleTime
 
     def get_available_core(self, time):
+        """
+        Retrieve the core which is/will be available the soonest
+        """
         
         # update the running services 
         for indx in range(0, len(self.coreService)):
@@ -96,6 +99,17 @@ class CpuInfo(object):
             return indx
         
         return None
+
+    def get_free_core(self, time):
+        """
+        Retrieve a currently available core, if there is any. 
+        If there isn't, return None
+        """
+        core_indx = self.get_available_core(time)
+        if self.coreFinishTime[core_indx] == time:
+            return core_indx
+        else:
+            return None
     
     def get_next_available_core(self):
         indx = self.coreFinishTime.index(min(self.coreFinishTime)) 
@@ -162,24 +176,33 @@ class ComputationalSpot(object):
 
         # CPU info
         self.cpuInfo = CpuInfo(self.numOfCores)
+        
+        n_services = self.numOfCores 
         # num. of vms (memory capacity) #TODO rename this
         self.n_services = n_services
+        
         # Task queue of the comp. spot
         self.taskQueue = []
+        
         # num. of instances of each service in the memory
         self.numberOfInstances = [0]*self.service_population 
 
         # server missed requests (due to congestion)
         self.missed_requests = [0] * self.service_population
+        
         # service request count (per service)
         self.running_requests = [0 for x in range(0, self.service_population)] #correct!
+        
         # delegated service request counts (per service)
         self.delegated_requests = [0 for x in range(0, self.service_population)]
         
         self.services = services
         self.view = None
         self.node = node
-        self.rtt_upstream = [0.0 for x in range(0, self.service_population)]
+
+        # Price of each VM
+        self.vm_prices = [0]*self.n_services
+        # get_offline_prices( )
 
         # TODO setup all the variables: numberOfInstances, cpuInfo, etc. ...
 
@@ -237,7 +260,6 @@ class ComputationalSpot(object):
         # Add the task to the taskQueue
         taskQueueCopy = self.taskQueue[:] #shallow copy
 
-
         cpuInfoCopy = copy.deepcopy(self.cpuInfo)
 
         # Check if the queue has any task that misses its deadline (after adding this)
@@ -276,6 +298,53 @@ class ComputationalSpot(object):
             else: # for loop concluded without a break
                 sched_failed = True
                 core_indx = cpuInfoCopy.coreService.index(aTask.service)
+
+    def admit_task_auction(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):
+        """
+        Admit a task if there is an idle VM 
+        """
+        serviceTime = self.services[service].service_time
+        if self.is_cloud:
+            controller.add_event(time+serviceTime, receiver, service, self.node, flow_id, deadline, rtt_delay, TASK_COMPLETE)
+            controller.execute_service(flow_id, service, self.node, time, self.is_cloud)
+            if debug:
+                print ("CLOUD: Accepting TASK")
+            return [True, CLOUD]
+
+        self.cpuInfo.update_core_status(time) #need to call before simulate
+        core_indx = self.cpuInfo.get_free_core(time)
+        if core_indx == None:
+            return [False, CONGESTION]
+        else:
+            finishTime = time + serviceTime
+            self.cpuInfo.assign_task_to_core(core_indx, finishTime, service)
+            controller.add_event(finishTime, receiver, service, self.node, flow_id, expiry, rtt_delay, TASK_COMPLETE) 
+            controller.execute_service(newTask.flow_id, newTask.service, self.node, time, self.is_cloud)
+            return [True, SUCCESS]
+
+    def SWMProblemCompactForm1Cloudlet1Service(u,L,phi,gamma,mu_s,capacity):
+        x = Variable(len(u))
+        y = Variable()
+        r_1 = sum_entries(x)<=y
+        r_2 = y*(1/mu_s)<=capacity
+        r_3 = x <=L
+        r_4 = x >=0.0
+        constraints = [r_1,r_2,r_3,r_4]
+    
+        objective  = Maximize(-phi*(1/mu_s)*y-mul_elemwise(gamma,pow(y,2))+(1/mu_s)*sum_entries(mul_elemwise(u,x)))
+        lp1 = Problem(objective,constraints)
+        result = lp1.solve()
+        print '========='
+        print 'SWM compact result: ',result
+        print 'entries sum: ',sum_entries(cumsum(u*x.value,axis=0))
+        print 'x: ',x.value
+        print 'y: ',y.value
+        optimalPrice  = phi+2*gamma[0]*y.value*mu_s+r_2.dual_value#-mu_s*r_1.dual_value
+        print 'z1: ',r_1.dual_value
+        print 'z3: ',r_2.dual_value
+        print 'p: ',optimalPrice
+        print '========='
+        return y.value,optimalPrice
 
     def admit_task_FIFO(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):
         """

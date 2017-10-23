@@ -88,7 +88,7 @@ class StationaryWorkload(object):
         the timestamp at which the event occurs and the second element is a
         dictionary of event attributes.
     """
-    def __init__(self, topology, n_contents, alpha, beta=0, rate=1.0,
+    def __init__(self, topology, n_contents, alpha, beta=0, rates=[0],
                     n_warmup=10 ** 5, n_measured=4 * 10 ** 5, seed=0, n_services=10, **kwargs):
         if alpha < 0:
             raise ValueError('alpha must be positive')
@@ -96,12 +96,15 @@ class StationaryWorkload(object):
             raise ValueError('beta must be positive')
         self.receivers = [v for v in topology.nodes_iter()
                      if topology.node[v]['stack'][0] == 'receiver']
-        self.zipf = TruncatedZipfDist(alpha, n_services-1, seed)
+        #self.zipf = TruncatedZipfDist(alpha, n_services-1, seed)
+        self.num_classes = topology.graph['n_classes']
+        self.zipf = TruncatedZipfDist(alpha, self.num_classes, seed)
         self.n_contents = n_contents
         self.contents = range(0, n_contents)
         self.n_services = n_services
         self.alpha = alpha
-        self.rate = rate
+        self.rates = rates
+        self.n_edgeRouters = topology.graph['n_edgeRouters']
         self.n_warmup = n_warmup
         self.n_measured = n_measured
         self.model = None
@@ -120,19 +123,32 @@ class StationaryWorkload(object):
         t_event = 0.0
         flow_id = 0
 
+        events = [0.0] * self.n_services * self.n_edgeRouters
+
         if self.first: #TODO remove this first variable, this is not necessary here
             random.seed(self.seed)
             self.first=False
-        aFile = open('workload.txt', 'w')
-        aFile.write("# Time\tNodeID\tserviceID\n")
+
+        for i in range(self.n_services*self.n_edgeRouters):
+            s = (i) % (self.n_services)
+            events[i] += random.expovariate(self.rates[s])
+        #aFile = open('workload.txt', 'w')
+        #aFile.write("# Time\tNodeID\tserviceID\n")
         eventObj = self.model.eventQ[0] if len(self.model.eventQ) > 0 else None
         while req_counter < self.n_warmup + self.n_measured or len(self.model.eventQ) > 0:
-            t_event += (random.expovariate(self.rate))
+            #t_event += (random.expovariate(self.rate))
+            nearest_event = min(events)
+            indx = events.index(nearest_event)
+            s = (indx) % self.n_services
+            n = (indx) / self.n_services
+            events[indx] += random.expovariate(self.rates[s])
+            t_event = nearest_event
+            
             eventObj = self.model.eventQ[0] if len(self.model.eventQ) > 0 else None
             while eventObj is not None and eventObj.time < t_event:
                 heapq.heappop(self.model.eventQ)
                 log = (req_counter >= self.n_warmup)
-                event = {'receiver' : eventObj.receiver, 'content': eventObj.service, 'log' : log, 'node' : eventObj.node, 'flow_id' : eventObj.flow_id, 'deadline' : eventObj.deadline, 'rtt_delay' : eventObj.rtt_delay,'status' : eventObj.status}
+                event = {'receiver' : eventObj.receiver, 'content': eventObj.service, 'log' : log, 'node' : eventObj.node, 'flow_id' : eventObj.flow_id, 'traffic_class' : eventObj.traffic_class, 'rtt_delay' : eventObj.rtt_delay,'status' : eventObj.status}
                 yield (eventObj.time, event)
                 eventObj = self.model.eventQ[0] if len(self.model.eventQ) > 0 else None
 
@@ -141,23 +157,25 @@ class StationaryWorkload(object):
                 continue
 
             if self.beta == 0:
-                receiver = random.choice(self.receivers)
+                receiver = self.receivers[n*num_classes + traffic_class] #random.choice(self.receivers)
             else:
                 receiver = self.receivers[self.receiver_dist.rv() - 1]
             node = receiver
-            content = int(self.zipf.rv())
+            #content = int(self.zipf.rv())
+            content = s
+            traffic_class = int(self.zipf.rv()) #random.randint(0, self.num_classes-1)
             log = (req_counter >= self.n_warmup)
             flow_id += 1
-            deadline = self.model.services[content].deadline + t_event
-            event = {'receiver': receiver, 'content' : content, 'log' : log, 'node' : node ,'flow_id': flow_id, 'rtt_delay' : 0, 'deadline': deadline, 'status' : REQUEST}
+            #deadline = self.model.services[content].deadline + t_event
+            event = {'receiver': receiver, 'content' : content, 'log' : log, 'node' : node ,'flow_id': flow_id, 'rtt_delay' : 0, 'traffic_class': traffic_class, 'status' : REQUEST}
             neighbors = self.topology.neighbors(receiver)
             s = str(t_event) + "\t" + str(neighbors[0]) + "\t" + str(content) + "\n"
-            aFile.write(s)
+            #aFile.write(s)
             yield (t_event, event)
             req_counter += 1
         
         print "End of iteration: len(eventObj): " + repr(len(self.model.eventQ))
-        aFile.close()
+        #aFile.close()
         raise StopIteration()
 
 @register_workload('GLOBETRAFF')
