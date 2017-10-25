@@ -44,7 +44,7 @@ def exec_experiment(topology, workload, netconf, strategy, cache_policy, collect
     results : Tree
         A tree with the aggregated simulation results from all collectors
     """
-    model = NetworkModel(topology, cache_policy, sched_policy['name'], workload.n_services, workload.rate, **netconf)
+    model = NetworkModel(topology, cache_policy, sched_policy['name'], workload.n_services, workload.rates, **netconf)
     workload.model = model
     view = NetworkView(model)
     controller = NetworkController(model)
@@ -62,8 +62,8 @@ def exec_experiment(topology, workload, netconf, strategy, cache_policy, collect
     warmup_strategy_inst = STRATEGY[warmup_strategy_name](view, controller, **warmup_strategy_args)
 
     for time, event in workload:
-        #continue
-        strategy_inst.process_event(time, **event)
+        continue
+        #strategy_inst.process_event(time, **event)
 
     return collector.results()
 

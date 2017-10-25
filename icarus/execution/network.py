@@ -63,7 +63,7 @@ class Event(object):
 class Service(object):
     """Implementation of a service object"""
 
-    def __init__(self, service_time=None, deadline=None):
+    def __init__(self, service_time=None, deadline=None, rate=None, alpha=None, rate_dist=None):
         """Constructor
         Parameters
         ----------
@@ -73,6 +73,9 @@ class Service(object):
 
         self.service_time = service_time
         self.deadline = deadline
+        self.rate = rate
+        self.alpha = alpha
+        self.rate_dist = rate_dist
 
 def symmetrify_paths(shortest_paths):
     """Make paths symmetric
@@ -471,7 +474,7 @@ class NetworkModel(object):
     calls to the network controller.
     """
 
-    def __init__(self, topology, cache_policy, sched_policy, n_services, rate, seed=0, shortest_path=None):
+    def __init__(self, topology, cache_policy, sched_policy, n_services, rates, alphas, rate_dist, seed=0, shortest_path=None):
         """Constructor
 
         Parameters
@@ -592,8 +595,8 @@ class NetworkModel(object):
 
             s = str(service_indx) + "\t" + str(service_time) + "\t" + str(deadline) + "\t" + str(diff) + "\n"
             #aFile.write(s)
+            s = Service(service_time, deadline, rates[service_indx], alphas[service_indx], rate_dist)
             service_indx += 1
-            s = Service(service_time, deadline)
             self.services.append(s)
         #aFile.close()
         #""" #END OF Generating Services

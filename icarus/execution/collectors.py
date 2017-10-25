@@ -46,7 +46,7 @@ class DataCollector(object):
         """
         self.view = view
 
-    def start_session(self, timestamp, receiver, content, flow_id=0, deadline=0):
+    def start_session(self, timestamp, receiver, content, flow_id=0, traffic_class=0):
         """Notifies the collector that a new network session started.
 
         A session refers to the retrieval of a content from a receiver, from
@@ -193,9 +193,9 @@ class CollectorProxy(DataCollector):
                            for e in self.EVENTS}
 
     @inheritdoc(DataCollector)
-    def start_session(self, timestamp, receiver, content, flow_id=0, deadline=0):
+    def start_session(self, timestamp, receiver, content, flow_id=0, traffic_class=0):
         for c in self.collectors['start_session']:
-            c.start_session(timestamp, receiver, content, flow_id, deadline)
+            c.start_session(timestamp, receiver, content, flow_id, traffic_class)
 
     @inheritdoc(DataCollector)
     def cache_hit(self, node):
@@ -390,11 +390,11 @@ class LatencyCollector(DataCollector):
         self.deadline_metric_interval = 0.0
 
     @inheritdoc(DataCollector)
-    def start_session(self, timestamp, receiver, content, flow_id=0, deadline=0):
+    def start_session(self, timestamp, receiver, content, flow_id=0, traffic_class=0):
         self.sess_count += 1
         self.sess_latency = 0.0
         self.flow_start[flow_id] = timestamp
-        self.flow_deadline[flow_id] = deadline
+        self.flow_deadline[flow_id] = traffic_class
         self.flow_service[flow_id] = content
         self.flow_cloud[flow_id] = False
         self.interval_sess_count += 1

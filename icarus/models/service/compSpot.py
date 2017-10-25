@@ -8,7 +8,10 @@ import random
 import abc
 import copy
 
-import numpy as np
+from cvxpy import *
+import numpy
+import math
+import optparse
 
 from icarus.util import inheritdoc
 
@@ -154,30 +157,30 @@ class ComputationalSpot(object):
         """
 
         if numOfCores == -1:
-            self.numOfCores = len(services)
+            self.numOfCores = 100000 # this should really be infinite
             self.is_cloud = True
         else:
-            self.numOfCores = numOfCores
+            self.numOfCores = n_services#numOfCores
             self.is_cloud = False
 
         self.service_population = len(services)
         self.model = model
+        self.num_classes = self.model.topology.graph['n_classes']
 
         print ("Number of VMs @node: " + repr(node) + " " + repr(n_services))
         print ("Number of cores @node: " + repr(node) + " " + repr(numOfCores))
 
-        if n_services < numOfCores:
-            n_services = numOfCores*2
+        #if n_services < numOfCores:
+        #    n_services = numOfCores*2
         
-        if n_services > self.service_population:
-            n_services = self.service_population
+        #if n_services > self.service_population:
+        #    n_services = self.service_population
 
         self.sched_policy = sched_policy
 
         # CPU info
         self.cpuInfo = CpuInfo(self.numOfCores)
         
-        n_services = self.numOfCores 
         # num. of vms (memory capacity) #TODO rename this
         self.n_services = n_services
         
@@ -199,9 +202,15 @@ class ComputationalSpot(object):
         self.services = services
         self.view = None
         self.node = node
+        height = self.model.topology.graph['height']
+        link_delay = self.model.topology.graph['link_delay']
+        self.depth = self.model.topology.node[self.node]['depth']
+        self.delay_to_cs = (height - depth)*link_delay 
 
         # Price of each VM
-        self.vm_prices = [0]*self.n_services
+        self.vm_prices = [0.0]*self.n_services
+        self.utilities = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)] 
+
         # get_offline_prices( )
 
         # TODO setup all the variables: numberOfInstances, cpuInfo, etc. ...
@@ -321,30 +330,130 @@ class ComputationalSpot(object):
             controller.add_event(finishTime, receiver, service, self.node, flow_id, expiry, rtt_delay, TASK_COMPLETE) 
             controller.execute_service(newTask.flow_id, newTask.service, self.node, time, self.is_cloud)
             return [True, SUCCESS]
+    
+    def compute_utility(self):
+        u_max = 100.0
+        service_max_delay = 0.0
+        service_min_delay = float('inf')
+        class_max_delay = [0.0] * self.num_classes
+        class_min_delay = [0.0] * self.num_classes
 
-    def SWMProblemCompactForm1Cloudlet1Service(u,L,phi,gamma,mu_s,capacity):
+        for c in range(self.num_classes):
+            class_max_delay[c] = self.model.topology.graph['max_delay'][c]
+            class_min_delay[c] = 0
+            service_max_delay = max(service_max_delay, class_max_delay[c])
+            service_min_delay = 0
+
+        class_u_min = [0.0]*self.num_classes
+        
+        for s in range(self.service_population):
+            for c in range(self.num_classes):
+                class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/services[service].alpha)*u_max
+
+                self.utilities[s][c] = class_u_min + (u_max - class_u_min) * pow((class_max_delay[c] - (self.delay_to_cs + self.model.topology.graph['min_delay'][c]))/class_max_delay[c], 1/self.services[s].alpha) 
+
+    def get_prices(self): #u,L,phi,gamma,mu_s,capacity):
+        #U,L,M,X,P,Y     = returnAppSPsInfoForThisMarket(incpID,options)
+        Y               = [1.0] * self.service_population
+        M               = [x.service_time for x in self.services]
+        L               = [[self.services[y].rate*self.services[y].rate_dist[x] for x in range(self.num_classes)] for y in range(self.service_population)] 
+        X               = [0.0] * self.service_population
+        U               = self.utilities
+        P               = [float('inf')]*self.service_population
+        vmPrices        = []
+        counter         = 0
+        breakingPoint   = 50
+        X_old           = 0.0
+        while True:#iteration
+            if ControlPrint:
+                print '------------------------------'
+                print 'current price per service: ',P
+            #estimate requested and admitted traffic
+            X_current       = 0.0
+            for appSPID in range(self.service_population):
+                X[appSPID],x = stage1AppSPCompactRequestedTraffic(P[appSPID],Y[appSPID],U[appSPID],L[appSPID],M[appSPID])
+                X_current   += X[appSPID]
+            if X_current==X_old:
+                P,flagLastTurn  = brokerPriceUpdateSingleServiceNCloudlet(P)
+                if not flagLastTurn:
+                    continue
+            X_old  = X_current
+            endProcess  = updateVMPrices(X,M,P,vmPrices)
+            if endProcess or flagLastTurn:
+                break
+        print 'VM prices ',vmPrices
+        #update arrival rates for the next INCP
+        #for appSPID in range(self.service_population):
+        #    X[appSPID],x = stage1AppSPCompactRequestedTraffic(P[appSPID],Y[appSPID],U[appSPID],L[appSPID],M[appSPID])
+        #    if X[appSPID]==0.0:
+        #        continue
+        #    index  = 0
+        #    for classID in listOfClasses:
+        #        appSpLamdaPerClass[appSPID,classID] -=x[index].item(0)
+        #        index+=1
+    
+    def stage1AppSPCompactRequestedTraffic(self, p, Y, u, L, mu_s, ControlPrint=False):
         x = Variable(len(u))
-        y = Variable()
-        r_1 = sum_entries(x)<=y
-        r_2 = y*(1/mu_s)<=capacity
+        #r_1 = sum_entries(x)<=Y
         r_3 = x <=L
         r_4 = x >=0.0
-        constraints = [r_1,r_2,r_3,r_4]
-    
-        objective  = Maximize(-phi*(1/mu_s)*y-mul_elemwise(gamma,pow(y,2))+(1/mu_s)*sum_entries(mul_elemwise(u,x)))
+        #constraints = [r_1,r_3,r_4]
+        constraints = [r_3,r_4]
+        p_s=[p]*len(u)
+        param  = numpy.subtract(u,p_s)
+        objective  = Maximize((1/mu_s)*sum_entries(mul_elemwise(param,x)))
         lp1 = Problem(objective,constraints)
         result = lp1.solve()
-        print '========='
-        print 'SWM compact result: ',result
-        print 'entries sum: ',sum_entries(cumsum(u*x.value,axis=0))
-        print 'x: ',x.value
-        print 'y: ',y.value
-        optimalPrice  = phi+2*gamma[0]*y.value*mu_s+r_2.dual_value#-mu_s*r_1.dual_value
-        print 'z1: ',r_1.dual_value
-        print 'z3: ',r_2.dual_value
-        print 'p: ',optimalPrice
-        print '========='
-        return y.value,optimalPrice
+        Xsum  = 0.0
+        if result<0 or math.fabs(result)<0.00001:#solver error estimation
+            return Xsum,x
+        for element in x:
+            Xsum  += element.value
+        if ControlPrint:
+            print '\tAppSP gain: ',result,', ',x.value[0],', ',x.value[1]
+            #print '\t\tlamda_1: ',r_1.dual_value
+            print '\t\tsum of Xs: ',Xsum
+        return Xsum,x.value
+
+    def brokerPriceUpdateSingleServiceNCloudlet(self, P, s=1.0):
+        flagLastTurn  = False
+        for appSPID in self.service_population:
+            P[appSPID]  = max(0.0,P[appSPID]-s)
+            if P[appSPID]==0.0:
+                flagLastTurn  = True
+        return P,flagLastTurn
+
+    def updateVMPrices(self, X,M,P,vmPrices, ControlPrint=False):
+        x      = []
+        x_sqr  = []
+        mu = []
+        W  = []
+        objective  = 0.0
+        y  = 0.0
+        price  = 0.0
+        phi = 0.2
+        for appSPID in self.service_population:
+            m  = 1.0/M[appSPID]
+            p  = P[appSPID]-phi
+            price  = P[appSPID]
+            x  = X[appSPID]
+            y +=m*x
+            objective+=m*p*x #-options.gamma*pow(x,2)
+        if ControlPrint:
+            print 'price: ',price
+            print '\tobjective: ',objective
+        endProcess  = True
+        if objective<0 and math.fabs(objective)>0.001:
+            return endProcess
+        requestedCapacity  = min(math.floor(y), self.n_services)
+        if requestedCapacity<self.n_services:
+            endProcess  = False
+        if ControlPrint:
+            print '\t\trequested capacity: ',requestedCapacity,', y: ',y
+            print '\t\t\t',X
+        for index  in xrange(len(vmPrices),int(requestedCapacity)):
+            vmPrices.append(price)
+        return endProcess
 
     def admit_task_FIFO(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):
         """

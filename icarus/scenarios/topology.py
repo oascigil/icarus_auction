@@ -126,7 +126,7 @@ def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=5, min_delay=I
     for u, v in topology.edges_iter():
         topology.edge[u][v]['type'] = 'internal'
         if u is 0 or v is 0:
-            topology.edge[u][v]['delay'] = 3*delay
+            topology.edge[u][v]['delay'] = delay
             print "Edge between " + repr(u) + " and " + repr(v) + " delay: " + repr(topology.edge[u][v]['delay'])
         else:
             topology.edge[u][v]['delay'] = delay
@@ -135,10 +135,13 @@ def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=5, min_delay=I
     for v in topology.nodes_iter():
         print "Depth of " + repr(v) + " is " + repr(topology.node[v]['depth'])
     
-    
     routers = topology.nodes()
     topology.graph['icr_candidates'] = set(routers)
     topology.graph['n_classes'] = n_classes
+    topology.graph['max_delay'] = [0.0]*n_classes
+    topology.graph['min_delay'] = [0.0]*n_classes
+    topology.graph['height'] = h
+    topology.graph['link_delay'] = delay
     
     edge_routers = [v for v in topology.nodes_iter()
                  if topology.node[v]['depth'] == h]
@@ -149,18 +152,21 @@ def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=5, min_delay=I
     #          and topology.node[v]['depth'] < h]
     n_receivers = len(edge_routers) * n_classes
     receivers = ['rec_%d' % i for i in range(n_receivers)]
-    
     topology.graph['n_edgeRouters'] = len(edge_routers)
 
     delays = [None]*n_classes
     for i in range(n_classes):
         random_delay = random.uniform(min_delay, max_delay)
+        topology.graph['min_delay'][i] = random_delay
+        topology.graph['max_delay'][i] = random_delay + h*delay
         delays[i] = random_delay
-        
-    for i in range(n_receivers):
+    
+    receiver_indx = 0
+    for edge_router in edge_routers:
         for j in range(n_classes):
             d = delays[j]
-            topology.add_edge(receivers[i], j, d, type='internal')
+            topology.add_edge(receivers[receiver_indx], edge_router, delay=d, type='internal')
+            receiver_indx += 1
     n_sources = len(root) 
     sources = ['src_%d' % i for i in range(n_sources)]
     for i in range(n_sources):

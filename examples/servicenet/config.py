@@ -53,14 +53,15 @@ DATA_COLLECTORS = ['LATENCY']
 # This would give problems while trying to plot the results because if for
 # example I wanted to filter experiment with alpha=0.8, experiments with
 # alpha = 0.799999999999 would not be recognized 
-ALPHA = 0.75
+ZIPF_EXP = 0.75
 #ALPHA = [0.00001]
+ALPHAS = [0.2, 1.0]
 
 # Total size of network cache as a fraction of content population
 NETWORK_CACHE = 0.05
 
 # Number of content objects
-N_CONTENTS = 10
+N_CONTENTS = 2
 
 # SERVICE POPULATION
 N_SERVICES = N_CONTENTS
@@ -84,8 +85,9 @@ N_MEASURED_REQUESTS = NETWORK_REQUEST_RATE*SECS*MINS
 # Topology implementations are located in ./icarus/scenarios/topology.py
 TOPOLOGIES =  ['TREE']
 N_CLASSES = 10
-RATES = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10] # A rate per service
-TREE_DEPTH = 3
+RATES = [10, 10] # A rate per service
+RATE_DIST = [0.5, 0.5] # how service rates are distributed among classes
+TREE_DEPTH = 2
 BRANCH_FACTOR = 2
 
 # Replacement Interval in seconds
@@ -94,8 +96,8 @@ NUM_REPLACEMENTS = 10000
 
 # List of caching and routing strategies
 # The code is located in ./icarus/models/strategy.py
-STRATEGIES = ['SDF', 'HYBRID', 'MFU']  # service-based routing
-#STRATEGIES = ['MFU'] 
+#STRATEGIES = ['SDF', 'HYBRID', 'MFU']  # service-based routing
+STRATEGIES = ['STATIC_FIFO'] 
 #STRATEGIES = ['SDF']  
 #STRATEGIES = ['HYBRID'] 
 #STRATEGIES = ['LRU']  
@@ -118,17 +120,18 @@ default['workload'] = {'name':       'STATIONARY',
                        'n_warmup':   N_WARMUP_REQUESTS,
                        'n_measured': N_MEASURED_REQUESTS,
                        'rates':       RATES,
+                       'rate_dist' :     RATE_DIST,
                        'seed':  0,
                        'n_services': N_SERVICES,
-                       'alpha' : ALPHA
+                       'alpha' : ZIPF_EXP
                       }
 default['cache_placement']['name'] = 'UNIFORM'
 #default['computation_placement']['name'] = 'CENTRALITY'
 default['computation_placement']['name'] = 'UNIFORM'
 #default['computation_placement']['name'] = 'CENTRALITY'
-default['computation_placement']['service_budget'] = N_SERVICES/2 #N_SERVICES/2  #*2
+default['computation_placement']['service_budget'] = N_SERVICES*5 # number of VMs in the memory
 default['cache_placement']['network_cache'] = default['computation_placement']['service_budget']
-default['computation_placement']['computation_budget'] = N_SERVICES/40 #2 cores each
+default['computation_placement']['computation_budget'] = N_SERVICES*5 # one core per each VM
 default['content_placement']['name'] = 'UNIFORM'
 default['cache_policy']['name'] = CACHE_POLICY
 default['sched_policy']['name'] = SCHED_POLICY
@@ -138,9 +141,11 @@ default['topology']['name'] = 'TREE'
 default['topology']['k'] = BRANCH_FACTOR
 default['topology']['h'] = TREE_DEPTH
 default['topology']['n_classes'] = N_CLASSES
-default['topology']['min_delay'] = 0.001
-default['topology']['max_delay'] = 0.020
+default['topology']['min_delay'] = 0.004
+default['topology']['max_delay'] = 0.034
 default['warmup_strategy']['name'] = WARMUP_STRATEGY
+default['netconf']['alphas'] = ALPHAS
+default['netconf']['rate_dist'] = RATE_DIST
 
 # Create experiments multiplexing all desired parameters
 for strategy in ['LRU']: # STRATEGIES:
