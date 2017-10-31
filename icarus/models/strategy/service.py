@@ -15,7 +15,7 @@ __all__ = [
        'MostFrequentlyUsed',
        'Hybrid',
        'Lru', 
-       'StaticFifo'
+       'DoubleAuction'
            ]
 
 # Status codes
@@ -30,25 +30,34 @@ CLOUD = 3
 NO_INSTANCES = 4
 
 # Auction
-@register_strategy('STATIC_FIFO')
-class StaticFifo(Strategy):
+@register_strategy('DOUBLE_AUCTION')
+class DoubleAuction(Strategy):
     """A distributed approach for service-centric routing
     """
-    def __init__(self, view, controller, debug=False, **kwargs):
-        super(StaticFifo, self).__init__(view,controller)
+    def __init__(self, view, controller, replacement_interval=1, debug=False, **kwargs):
+        super(DoubleAuction, self).__init__(view,controller)
         self.receivers = view.topology().receivers()
         self.compSpots = self.view.service_nodes()
         self.num_nodes = len(self.compSpots.keys())
         self.num_services = self.view.num_services()
         self.debug = debug
-    
+        self.replacement_interval = replacement_interval
+        self.last_replacement = 0.0
+        for node in self.compSpots.keys():
+            cs = self.compSpots[node]
+            self.controller.set_vm_prices(node, cs.vm_prices)
+            
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
+        if time - self.last_replacement > self.replacement_interval:
+            print("Evaluation interval over at time: " + repr(time))
+            self.controller.replacement_interval_over(self.replacement_interval, time)
+            self.last_replacement = time
         service = content
-        source = self.view.content_source(service)
+        cloud = self.view.content_source(service)
         if receiver == node and status == REQUEST:
             self.controller.start_session(time, receiver, service, log, flow_id, traffic_class)
-            path = self.view.shortest_path(node, source)
+            path = self.view.shortest_path(node, cloud)
             next_node = path[1]
             delay = self.view.path_delay(node, next_node)
             self.controller.add_event(time+delay, receiver, service, next_node, flow_id, traffic_class, rtt_delay, REQUEST)
@@ -57,10 +66,6 @@ class StaticFifo(Strategy):
         if self.debug:
             print ("\nEvent\n time: " + repr(time) + " receiver  " + repr(receiver) + " service " + repr(service) + " node " + repr(node) + " flow_id " + repr(flow_id) + " traffic class " + repr(traffic_class) + " status " + repr(status)) 
         
-        if node == source:
-            print ("Error: reached the source node: " + repr(node) + " this should not happen!")
-            return
-
         compSpot = None
         if self.view.has_computationalSpot(node):
             compSpot = self.view.compSpot(node)
@@ -85,14 +90,19 @@ class StaticFifo(Strategy):
             
         elif status == REQUEST:
             # Processing a request
-            source = self.view.content_source(service)
-            path = self.view.shortest_path(node, source)
-            next_node = path[1]
-            ret, reason = compSpot.admit_task_auction(service, time, flow_id, traffic_class, receiver, rtt_delay, self.controller, self.debug)
-            if ret == False:
-                delay = self.view.path_delay(node, next_node)
-                rtt_delay += 2*delay
-                self.controller.add_event(time+delay, receiver, service, next_node, flow_id, traffic_class, rtt_delay, REQUEST)
+            if node == cloud: # request reached the cloud
+                service_time = self.view.get_service_time(service)
+                self.controller.add_event(time+service_time, receiver, service, node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE)
+                self.controller.execute_service(time, service, True, traffic_class, 0, 0)
+            else:    
+                path = self.view.shortest_path(node, cloud)
+                next_node = path[1]
+                ret, reason = compSpot.admit_task_auction(service, time, flow_id, traffic_class, receiver, rtt_delay, self.controller, self.debug)
+                if ret == False:
+                    delay = self.view.path_delay(node, next_node)
+                    rtt_delay += 2*delay
+                    self.controller.add_event(time+delay, receiver, service, next_node, flow_id, traffic_class, rtt_delay, REQUEST)
+
 
 # LRU
 @register_strategy('LRU')
@@ -132,7 +142,6 @@ class Lru(Strategy):
         service = content
 
         if time - self.last_replacement > self.replacement_interval:
-            #self.print_stats()
             self.controller.replacement_interval_over(flow_id, self.replacement_interval, time)
             self.last_replacement = time
             self.initialise_metrics()

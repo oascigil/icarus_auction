@@ -117,13 +117,21 @@ def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=5, min_delay=I
     topology : IcnTopology
         The topology object
     """
+    random.seed(0)
     topology = fnss.k_ary_tree_topology(k, h)
     
     # set weights and delays on all links
     fnss.set_weights_constant(topology, 1.0)
     fnss.set_delays_constant(topology, delay, 'ms')
 
+    topology.graph['parent'] = [None for x in range(pow(k,h+1)-1)]
+
     for u, v in topology.edges_iter():
+        if topology.node[u]['depth'] > topology.node[v]['depth']:
+            topology.graph['parent'][u] = v
+        else:
+            topology.graph['parent'][v] = u 
+            
         topology.edge[u][v]['type'] = 'internal'
         if u is 0 or v is 0:
             topology.edge[u][v]['delay'] = delay
@@ -158,7 +166,7 @@ def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=5, min_delay=I
     for i in range(n_classes):
         random_delay = random.uniform(min_delay, max_delay)
         topology.graph['min_delay'][i] = random_delay
-        topology.graph['max_delay'][i] = random_delay + h*delay
+        topology.graph['max_delay'][i] = random_delay + (h+1)*delay #+1 for the root-source
         delays[i] = random_delay
     
     receiver_indx = 0
@@ -170,7 +178,7 @@ def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=5, min_delay=I
     n_sources = len(root) 
     sources = ['src_%d' % i for i in range(n_sources)]
     for i in range(n_sources):
-        topology.add_edge(sources[i], root[0], delay=0.001, type='internal')
+        topology.add_edge(sources[i], root[0], delay=delay, type='internal')
 
     print "The number of sources: " + repr(n_sources)
     print "The number of receivers: " + repr(n_receivers)
@@ -180,6 +188,10 @@ def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=5, min_delay=I
         fnss.add_stack(topology, v, 'receiver')
     for v in routers:
         fnss.add_stack(topology, v, 'router')
+    
+    for v in topology.nodes_iter():
+        if 'depth' in topology.node[v].keys():
+            print "Depth of " + repr(v) + " is " + repr(topology.node[v]['depth'])
     # label links as internal
     return IcnTopology(topology)
 
@@ -206,24 +218,62 @@ def topology_path(n, delay=EXTERNAL_LINK_DELAY/1000, n_classes=10, min_delay=INT
     fnss.set_delays_constant(topology, min_delay, 'ms')
     routers = topology.nodes()
     # Set the depth of each node to determine which node is the root and the edge
-    d = n-1
+    d = 0
     for i in range(n):
         topology.node[i]['depth'] = d
-        d = d - 1
-    edge_router = [v for v in topology.nodes_iter() if topology.node[v]['depth'] == n-1][0]
+        d += 1
+    # Set the parents of nodes (to make it compatible with the tree topology
+    topology.graph['parent'] = [None for x in range(n)]
+    for u, v in topology.edges_iter():
+        if topology.node[u]['depth'] > topology.node[v]['depth']:
+            topology.graph['parent'][u] = v
+        else:
+            topology.graph['parent'][v] = u 
+
+        topology.edge[u][v]['type'] = 'internal'
+        topology.edge[u][v]['delay'] = delay
+        print "Edge between " + repr(u) + " and " + repr(v) + " delay: " + repr(topology.edge[u][v]['delay'])
+
+    for v in topology.nodes_iter():
+        print "Depth of " + repr(v) + " is " + repr(topology.node[v]['depth'])
+    routers = topology.nodes()
+    edge_routers = [v for v in topology.nodes_iter() if topology.node[v]['depth'] == n-1]
+    topology.graph['icr_candidates'] = set(routers)
+    topology.graph['n_classes'] = n_classes
+    topology.graph['max_delay'] = [0.0]*n_classes
+    topology.graph['min_delay'] = [0.0]*n_classes
+    topology.graph['height'] = n-1
+    topology.graph['link_delay'] = delay
+    topology.graph['n_edgeRouters'] = len(edge_routers)
+    # Set the receivers (users)
+    n_receivers = n_classes
+    receivers = ['rec_%d' % i for i in range(n_receivers)]
     root = [v for v in topology.nodes_iter() if topology.node[v]['depth'] == 0][0]
+    
+    delays = [None]*n_classes
+    for i in range(n_classes):
+        random_delay = random.uniform(min_delay, max_delay)
+        topology.graph['min_delay'][i] = random_delay
+        topology.graph['max_delay'][i] = random_delay + (n)*delay
+        delays[i] = random_delay
+    
+    # Add receivers (i.e., users) to the topology
+    receiver_indx = 0
+    for edge_router in edge_routers:
+        for j in range(n_classes):
+            d = delays[j]
+            topology.add_edge(receivers[receiver_indx], edge_router, delay=d, type='internal')
+            receiver_indx += 1
+
     # Set the sources (origin servers)
     n_sources = 1
     sources = ['src_%d' % i for i in range(n_sources)]
-    # Set the receivers (users)
-    receivers = ['rec_%d' % i for i in range(n_receivers)]
     for i in range(n_sources):
-        topology.add_edge(sources[i], root, min_delay, type='internal')
-    for i in range(n_receivers):
-        random_delay = random.uniform(min_delay, max_delay)
-        topology.add_edge(receivers[i], edge_router, random_delay, type='internal')
+        topology.add_edge(sources[i], root, delay=delay, type='internal')
 
-    topology.graph['icr_candidates'] = set(routers)
+    print "The number of sources: " + repr(n_sources)
+    print "The number of receivers: " + repr(n_receivers)
+
     for v in sources:
         fnss.add_stack(topology, v, 'source')
     for v in receivers:

@@ -20,6 +20,7 @@ import networkx as nx
 import fnss
 
 import heapq 
+import numpy
 
 from icarus.registry import CACHE_POLICY
 from icarus.util import path_links, iround
@@ -63,7 +64,7 @@ class Event(object):
 class Service(object):
     """Implementation of a service object"""
 
-    def __init__(self, service_time=None, deadline=None, rate=None, alpha=None, rate_dist=None):
+    def __init__(self, service_time=None, deadline=None, alpha=None):
         """Constructor
         Parameters
         ----------
@@ -73,9 +74,7 @@ class Service(object):
 
         self.service_time = service_time
         self.deadline = deadline
-        self.rate = rate
         self.alpha = alpha
-        self.rate_dist = rate_dist
 
 def symmetrify_paths(shortest_paths):
     """Make paths symmetric
@@ -187,6 +186,13 @@ class NetworkView(object):
         """
         return self.model.shortest_path[s][t]
 
+    def get_service_time(self, service_id):
+        """
+        Returns
+        ______
+        service execution time
+        """
+        return self.model.services[service_id].service_time
 
     def num_services(self):
         """
@@ -564,8 +570,8 @@ class NetworkModel(object):
         self.n_services = n_services
         internal_link_delay = 0.001 # This is the delay from receiver to router
         
-        service_time_min = 0.004 # used to be 0.001
-        service_time_max = 0.004 # used to be 0.1 
+        service_time_min = 0.8 # used to be 0.001
+        service_time_max = 0.8 # used to be 0.1 
         #delay_min = 0.005
         delay_min = 0.001*2 + 0.020 # Remove*10
         delay_max = 0.202  #NOTE: make sure this is not too large; otherwise all requests go to cloud and are satisfied! 
@@ -595,7 +601,7 @@ class NetworkModel(object):
 
             s = str(service_indx) + "\t" + str(service_time) + "\t" + str(deadline) + "\t" + str(diff) + "\n"
             #aFile.write(s)
-            s = Service(service_time, deadline, rates[service_indx], alphas[service_indx], rate_dist)
+            s = Service(service_time, deadline, alphas[service_indx])
             service_indx += 1
             self.services.append(s)
         #aFile.close()
@@ -603,6 +609,39 @@ class NetworkModel(object):
 
         self.compSpot = {node: ComputationalSpot(self, comp_size[node], service_size[node], self.services, node, sched_policy, None) 
                             for node in comp_size}
+ 
+        # Run the offline price computation
+        print "Computing prices:"
+        height = topology.graph['height']
+        print "Topo has a height of " + repr(height)
+        h = height
+        while h >= 0:
+            level_h_routers = []
+            for v in topology.nodes_iter():
+                 if ('depth' in topology.node[v].keys()) and (topology.node[v]['depth'] == h):
+                    level_h_routers.append(v)
+
+            print "Level_h_routers:" + repr(level_h_routers)
+            for v in level_h_routers:
+                cs = self.compSpot[v]
+                if h == height:
+                    # compute arrival rates
+                    cs.service_class_rate = [[rate_dist[x]*rates[y] for x in range(cs.num_classes)] for y in range(cs.service_population)]
+                cs.compute_prices()
+                p = topology.graph['parent'][v]
+                if p != None:
+                    cs_parent = self.compSpot[p]
+                    print 'Admitted service_class_rate: ' + repr(cs.admitted_service_class_rate)
+                    print 'Input service_class_rate: ' + repr(cs.service_class_rate)
+                    diff = numpy.subtract(cs.service_class_rate, cs.admitted_service_class_rate)
+                    diff = diff.tolist()
+                    print 'diff: ' + repr(diff)
+                    cs_parent.service_class_rate = numpy.add(cs_parent.service_class_rate, diff)
+                    cs_parent.service_class_rate = cs_parent.service_class_rate.tolist()
+                    print 'Parent service_class_rate: ' + repr(cs_parent.service_class_rate)
+            h -= 1
+
+        print "Done computing prices"
 
         # This is for a local un-coordinated cache (currently used only by
         # Hashrouting with edge cache)
@@ -655,7 +694,7 @@ class NetworkController(object):
         """Detach the data collector."""
         self.collector = None
 
-    def start_session(self, timestamp, receiver, content, log, flow_id=0, deadline=0):
+    def start_session(self, timestamp, receiver, content, log, flow_id=0, traffic_class=0):
         """Instruct the controller to start a new session (i.e. the retrieval
         of a content).
 
@@ -671,14 +710,14 @@ class NetworkController(object):
             *True* if this session needs to be reported to the collector,
             *False* otherwise
         """
-        self.session[flow_id] = dict(timestamp=timestamp,
-                            receiver=receiver,
-                            content=content,
-                            log=log,
-                            deadline=deadline)
+        #self.session[flow_id] = dict(timestamp=timestamp,
+        #                    receiver=receiver,
+        #                    content=content,
+        #                    log=log,
+        #                    deadline=deadline)
 
         #if self.collector is not None and self.session[flow_id]['log']:
-        self.collector.start_session(timestamp, receiver, content, flow_id, deadline)
+        self.collector.start_session(timestamp, receiver, content, flow_id, traffic_class)
 
     def forward_request_path(self, s, t, path=None, main_path=True):
         """Forward a request from node *s* to node *t* over the provided path.
@@ -831,17 +870,22 @@ class NetworkController(object):
         e = Event(time, receiver, service, node, flow_id, deadline, rtt_delay, status)
         heapq.heappush(self.model.eventQ, e)
 
-    def replacement_interval_over(self, flow_id, replacement_interval, timestamp):
+    def replacement_interval_over(self, replacement_interval, timestamp):
         """ Perform replacement of services at each computation spot
         """
         #if self.collector is not None and self.session[flow_id]['log']:
         self.collector.replacement_interval_over(replacement_interval, timestamp)
+    
+    def set_vm_prices(self, node, vm_prices): #TODO
+        """ Set the VM prices of a node
+        """
+        self.collector.set_vm_prices(node, vm_prices)
             
-    def execute_service(self, flow_id, service, node, timestamp, is_cloud):
+    def execute_service(self, time, service, is_cloud, traffic_class, utility, price):
         """ Perform execution of the service at node with starting time
         """
 
-        self.collector.execute_service(flow_id, service, node, timestamp, is_cloud)
+        self.collector.execute_service(time, service, is_cloud, traffic_class, utility, price)
     
     def end_session(self, success=True, timestamp=0, flow_id=0):
         """Close a session

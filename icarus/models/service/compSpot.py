@@ -90,18 +90,19 @@ class CpuInfo(object):
         """
         
         # update the running services 
+        num_free_cores = 0
         for indx in range(0, len(self.coreService)):
             if self.coreFinishTime[indx] <= time:
                 self.idleTime += time - self.coreFinishTime[indx]
                 self.coreFinishTime[indx] = time
                 self.coreService[indx] = None
+                num_free_cores += 1
             
         indx = self.coreFinishTime.index(min(self.coreFinishTime))
         if self.coreFinishTime[indx] <= time:
-            self.coreFinishTime[indx] = time
-            return indx
+            return indx, num_free_cores
         
-        return None
+        return None, 0
 
     def get_free_core(self, time):
         """
@@ -156,12 +157,12 @@ class ComputationalSpot(object):
         services : list of all the services (service population) with their attributes
         """
 
-        if numOfCores == -1:
-            self.numOfCores = 100000 # this should really be infinite
-            self.is_cloud = True
-        else:
-            self.numOfCores = n_services#numOfCores
-            self.is_cloud = False
+        #if numOfCores == -1:
+        #    self.numOfCores = 100000 # this should really be infinite
+        #    self.is_cloud = True
+        #else:
+        self.numOfCores = n_services#numOfCores
+        self.is_cloud = False
 
         self.service_population = len(services)
         self.model = model
@@ -205,36 +206,41 @@ class ComputationalSpot(object):
         height = self.model.topology.graph['height']
         link_delay = self.model.topology.graph['link_delay']
         self.depth = self.model.topology.node[self.node]['depth']
-        self.delay_to_cs = (height - depth)*link_delay 
+        self.delay_to_cs = (height - self.depth)*link_delay 
 
         # Price of each VM
-        self.vm_prices = [0.0]*self.n_services
+        self.vm_prices = None
+        self.service_class_rate = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]
         self.utilities = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)] 
-
-        # get_offline_prices( )
+        print "Computing utilities"
+        self.compute_utilities() # compute the utilities of each service and class
+        print "Utilities: " + repr(self.utilities)
+        print "Done Computing utilities"
+        # Outputs from the get_prices() call:
+        self.admitted_service_rate = [0.0]*self.service_population
+        self.admitted_service_class_rate = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]
 
         # TODO setup all the variables: numberOfInstances, cpuInfo, etc. ...
-
-        num_services = 0
-        if dist is None and self.is_cloud == False:
+        #num_services = 0
+        #if dist is None and self.is_cloud == False:
             # setup a random set of services to run in the memory
-            while num_services < self.n_services:
-                service_index = random.choice(range(0, self.service_population))
-                if self.numberOfInstances[service_index] == 0:
-                    self.numberOfInstances[service_index] = 1
-                    num_services += 1
-                    evicted = self.model.cache[node].put(service_index) # HACK: should use controller here   
-                    print ("Evicted: " + repr(evicted))
+        #    while num_services < self.n_services:
+        #        service_index = random.choice(range(0, self.service_population))
+        #        if self.numberOfInstances[service_index] == 0:
+        #            self.numberOfInstances[service_index] = 1
+        #            num_services += 1
+        #            evicted = self.model.cache[node].put(service_index) # HACK: should use controller here   
+        #            print ("Evicted: " + repr(evicted))
 
     def schedule(self, time):
         """
         Return the next task to be executed, if there is any.
         """
 
-        # TODO: This methid can simply fetch the task with the smallest finish time
+        # TODO: This method can simply fetch the task with the smallest finish time
         # No need to repeat the same computation already carried out by simulate()
 
-        core_indx = self.cpuInfo.get_available_core(time)
+        core_indx = self.cpuInfo.get_available_core(time)[0]
         
         if (len(self.taskQueue) > 0) and (core_indx is not None):
             coreService = self.cpuInfo.coreService
@@ -308,30 +314,27 @@ class ComputationalSpot(object):
                 sched_failed = True
                 core_indx = cpuInfoCopy.coreService.index(aTask.service)
 
-    def admit_task_auction(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):
+    def admit_task_auction(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):
         """
         Admit a task if there is an idle VM 
         """
         serviceTime = self.services[service].service_time
-        if self.is_cloud:
-            controller.add_event(time+serviceTime, receiver, service, self.node, flow_id, deadline, rtt_delay, TASK_COMPLETE)
-            controller.execute_service(flow_id, service, self.node, time, self.is_cloud)
-            if debug:
-                print ("CLOUD: Accepting TASK")
-            return [True, CLOUD]
-
         self.cpuInfo.update_core_status(time) #need to call before simulate
-        core_indx = self.cpuInfo.get_free_core(time)
+        core_indx, num_free_cores = self.cpuInfo.get_available_core(time)
         if core_indx == None:
             return [False, CONGESTION]
         else:
+            utility = self.utilities[service][traffic_class]
+            price = self.vm_prices[num_free_cores-1]
+            if utility < price: # reject the request
+                return [False, CONGESTION]
             finishTime = time + serviceTime
             self.cpuInfo.assign_task_to_core(core_indx, finishTime, service)
-            controller.add_event(finishTime, receiver, service, self.node, flow_id, expiry, rtt_delay, TASK_COMPLETE) 
-            controller.execute_service(newTask.flow_id, newTask.service, self.node, time, self.is_cloud)
+            controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
+            controller.execute_service(time, service, self.is_cloud, traffic_class, utility, price)
             return [True, SUCCESS]
     
-    def compute_utility(self):
+    def compute_utilities(self):
         u_max = 100.0
         service_max_delay = 0.0
         service_min_delay = float('inf')
@@ -348,22 +351,30 @@ class ComputationalSpot(object):
         
         for s in range(self.service_population):
             for c in range(self.num_classes):
-                class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/services[service].alpha)*u_max
+                class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*u_max
 
                 self.utilities[s][c] = class_u_min + (u_max - class_u_min) * pow((class_max_delay[c] - (self.delay_to_cs + self.model.topology.graph['min_delay'][c]))/class_max_delay[c], 1/self.services[s].alpha) 
 
-    def get_prices(self): #u,L,phi,gamma,mu_s,capacity):
+    def compute_prices(self, ControlPrint=True): #u,L,phi,gamma,mu_s,capacity):
         #U,L,M,X,P,Y     = returnAppSPsInfoForThisMarket(incpID,options)
         Y               = [1.0] * self.service_population
-        M               = [x.service_time for x in self.services]
-        L               = [[self.services[y].rate*self.services[y].rate_dist[x] for x in range(self.num_classes)] for y in range(self.service_population)] 
+        M               = [1.0/x.service_time for x in self.services]
         X               = [0.0] * self.service_population
+        L               = self.service_class_rate
         U               = self.utilities
-        P               = [float('inf')]*self.service_population
+        #P               = [float('inf')]*self.service_population
+        P               = [100]*self.service_population
         vmPrices        = []
         counter         = 0
         breakingPoint   = 50
         X_old           = 0.0
+        print "Y = " + repr(Y)
+        print "M = " + repr(M)
+        print "X = " + repr(X)
+        print "L = " + repr(L)
+        print "U = " + repr(U)
+        print "P = " + repr(P)
+        flagLastTurn  = False
         while True:#iteration
             if ControlPrint:
                 print '------------------------------'
@@ -371,21 +382,37 @@ class ComputationalSpot(object):
             #estimate requested and admitted traffic
             X_current       = 0.0
             for appSPID in range(self.service_population):
-                X[appSPID],x = stage1AppSPCompactRequestedTraffic(P[appSPID],Y[appSPID],U[appSPID],L[appSPID],M[appSPID])
+                X[appSPID], x = self.stage1AppSPCompactRequestedTraffic(P[appSPID],Y[appSPID],U[appSPID],L[appSPID],M[appSPID])
+                print 'total: ' + repr(X[appSPID])
+                if X[appSPID] != 0:
+                    self.admitted_service_class_rate[appSPID] = [x[c].item(0) for c in range(self.num_classes)]
+                else:
+                    self.admitted_service_class_rate[appSPID] = [0.0 for c in range(self.num_classes)]
                 X_current   += X[appSPID]
             if X_current==X_old:
-                P,flagLastTurn  = brokerPriceUpdateSingleServiceNCloudlet(P)
+                P,flagLastTurn  = self.brokerPriceUpdateSingleServiceNCloudlet(P)
                 if not flagLastTurn:
                     continue
             X_old  = X_current
-            endProcess  = updateVMPrices(X,M,P,vmPrices)
+            endProcess  = self.updateVMPrices(X,M,P,vmPrices)
             if endProcess or flagLastTurn:
                 break
-        print 'VM prices ',vmPrices
+        while len(vmPrices) < self.n_services:
+            vmPrices.append(0.0) 
+            #= [0.0 for x in range(self.n_services)]
+        print 'VM prices ', vmPrices
+        self.vm_prices = vmPrices
         #update arrival rates for the next INCP
-        #for appSPID in range(self.service_population):
-        #    X[appSPID],x = stage1AppSPCompactRequestedTraffic(P[appSPID],Y[appSPID],U[appSPID],L[appSPID],M[appSPID])
+        for appSPID in range(self.service_population):
+            X[appSPID],x = self.stage1AppSPCompactRequestedTraffic(P[appSPID],Y[appSPID],U[appSPID],L[appSPID],M[appSPID])
         #    if X[appSPID]==0.0:
+            if X[appSPID] != 0:
+                self.admitted_service_class_rate[appSPID] = [x[c].item(0) for c in range(self.num_classes)]
+            else:
+                self.admitted_service_class_rate[appSPID] = [0.0 for c in range(self.num_classes)]
+        for appSPID in range(self.service_population):
+            self.admitted_service_rate[appSPID] = X[appSPID]
+        print 'Accepted rates: ', X
         #        continue
         #    index  = 0
         #    for classID in listOfClasses:
@@ -415,9 +442,9 @@ class ComputationalSpot(object):
             print '\t\tsum of Xs: ',Xsum
         return Xsum,x.value
 
-    def brokerPriceUpdateSingleServiceNCloudlet(self, P, s=1.0):
+    def brokerPriceUpdateSingleServiceNCloudlet(self, P, s=0.5):
         flagLastTurn  = False
-        for appSPID in self.service_population:
+        for appSPID in range(self.service_population):
             P[appSPID]  = max(0.0,P[appSPID]-s)
             if P[appSPID]==0.0:
                 flagLastTurn  = True
@@ -432,7 +459,7 @@ class ComputationalSpot(object):
         y  = 0.0
         price  = 0.0
         phi = 0.2
-        for appSPID in self.service_population:
+        for appSPID in range(self.service_population):
             m  = 1.0/M[appSPID]
             p  = P[appSPID]-phi
             price  = P[appSPID]

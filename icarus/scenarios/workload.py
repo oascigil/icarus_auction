@@ -88,7 +88,7 @@ class StationaryWorkload(object):
         the timestamp at which the event occurs and the second element is a
         dictionary of event attributes.
     """
-    def __init__(self, topology, n_contents, alpha, beta=0, rates=[0], rate_dist=[0]
+    def __init__(self, topology, n_contents, alpha, beta=0, rates=[0], rate_dist=[0],
                     n_warmup=10 ** 5, n_measured=4 * 10 ** 5, seed=0, n_services=10, **kwargs):
         if alpha < 0:
             raise ValueError('alpha must be positive')
@@ -111,6 +111,7 @@ class StationaryWorkload(object):
         self.beta = beta
         self.topology = topology
         self.rate_cum_dist = [0.0]*self.num_classes
+        print "rate_dist= ", rate_dist, "\n"
         for c in range(self.num_classes):
             self.rate_cum_dist[c] += rate_dist[c]
         if beta != 0:
@@ -136,7 +137,7 @@ class StationaryWorkload(object):
             s = (i) % (self.n_services)
             events[i] += random.expovariate(self.rates[s])
         aFile = open('workload.txt', 'w')
-        aFile.write("# Time\tNodeID\tserviceID\n")
+        aFile.write("# time\tnode_id\tservice_id\tTraffic_Class\n")
         eventObj = self.model.eventQ[0] if len(self.model.eventQ) > 0 else None
         while req_counter < self.n_warmup + self.n_measured or len(self.model.eventQ) > 0:
             #t_event += (random.expovariate(self.rate))
@@ -178,7 +179,7 @@ class StationaryWorkload(object):
             #deadline = self.model.services[content].deadline + t_event
             event = {'receiver': receiver, 'content' : content, 'log' : log, 'node' : node ,'flow_id': flow_id, 'rtt_delay' : 0, 'traffic_class': traffic_class, 'status' : REQUEST}
             neighbors = self.topology.neighbors(receiver)
-            s = str(t_event) + "\t" + str(neighbors[0]) + "\t" + str(content) + "\n"
+            s = str(t_event) + "\t" + str(neighbors[0]) + "\t" + str(content) + "\t" + repr(traffic_class)  + "\n"
             aFile.write(s)
             yield (t_event, event)
             req_counter += 1

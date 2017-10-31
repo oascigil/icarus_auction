@@ -26,7 +26,7 @@ CACHING_GRANULARITY = 'OBJECT'
 
 # Warm-up strategy
 #WARMUP_STRATEGY = 'MFU' #'HYBRID'
-WARMUP_STRATEGY = 'HYBRID' #'HYBRID'
+WARMUP_STRATEGY = 'STATIC_FIFO' #'HYBRID'
 
 # Format in which results are saved.
 # Result readers and writers are located in module ./icarus/results/readwrite.py
@@ -67,7 +67,7 @@ N_CONTENTS = 2
 N_SERVICES = N_CONTENTS
 
 # Number of requests per second (over the whole network)
-NETWORK_REQUEST_RATE = 100.0
+NETWORK_REQUEST_RATE = 100.0 # this rate does not mean anything anymore see per-service rates below
 
 # Number of content requests generated to prepopulate the caches
 # These requests are not logged
@@ -78,26 +78,26 @@ N_WARMUP_REQUESTS = 0 #30000
 #N_MEASURED_REQUESTS = 1000 #60*30000 #100000
 
 SECS = 60 #do not change
-MINS = 5.5
+MINS = 1
 N_MEASURED_REQUESTS = NETWORK_REQUEST_RATE*SECS*MINS
 
 # List of all implemented topologies
 # Topology implementations are located in ./icarus/scenarios/topology.py
 TOPOLOGIES =  ['TREE']
-N_CLASSES = 10
+N_CLASSES = 2
 RATES = [10, 10] # A rate per service
 RATE_DIST = [0.5, 0.5] # how service rates are distributed among classes
-TREE_DEPTH = 2
+TREE_DEPTH = 1
 BRANCH_FACTOR = 2
 
 # Replacement Interval in seconds
-REPLACEMENT_INTERVAL = 30
+REPLACEMENT_INTERVAL = 5
 NUM_REPLACEMENTS = 10000
 
 # List of caching and routing strategies
 # The code is located in ./icarus/models/strategy.py
 #STRATEGIES = ['SDF', 'HYBRID', 'MFU']  # service-based routing
-STRATEGIES = ['STATIC_FIFO'] 
+STRATEGIES = ['DOUBLE_AUCTION'] 
 #STRATEGIES = ['SDF']  
 #STRATEGIES = ['HYBRID'] 
 #STRATEGIES = ['LRU']  
@@ -137,9 +137,11 @@ default['cache_policy']['name'] = CACHE_POLICY
 default['sched_policy']['name'] = SCHED_POLICY
 default['strategy']['replacement_interval'] = REPLACEMENT_INTERVAL
 default['strategy']['n_replacements'] = NUM_REPLACEMENTS
-default['topology']['name'] = 'TREE'
-default['topology']['k'] = BRANCH_FACTOR
-default['topology']['h'] = TREE_DEPTH
+default['topology']['name'] = 'PATH'
+#default['topology']['name'] = 'TREE'
+#default['topology']['k'] = BRANCH_FACTOR
+#default['topology']['h'] = TREE_DEPTH
+default['topology']['n'] = TREE_DEPTH + 1
 default['topology']['n_classes'] = N_CLASSES
 default['topology']['min_delay'] = 0.004
 default['topology']['max_delay'] = 0.034
@@ -148,8 +150,8 @@ default['netconf']['alphas'] = ALPHAS
 default['netconf']['rate_dist'] = RATE_DIST
 
 # Create experiments multiplexing all desired parameters
-for strategy in ['LRU']: # STRATEGIES:
-    for p in [0.1, 0.25, 0.50, 0.75, 1.0]:
+for strategy in STRATEGIES: # STRATEGIES:
+    for p in [0.1]:
         experiment = copy.deepcopy(default)
         experiment['strategy']['name'] = strategy
         experiment['warmup_strategy']['name'] = strategy
@@ -159,14 +161,15 @@ for strategy in ['LRU']: # STRATEGIES:
         EXPERIMENT_QUEUE.append(experiment)
 
 # Compare SDF, LFU, Hybrid for default values
+"""
 for strategy in STRATEGIES:
     experiment = copy.deepcopy(default)
     experiment['strategy']['name'] = strategy
     experiment['desc'] = "strategy: %s, prob: %s" \
                          % (strategy, str(p))
     EXPERIMENT_QUEUE.append(experiment)
-
-#"""
+"""
+"""
 budgets = [N_SERVICES/8, N_SERVICES/4, N_SERVICES/2, 0.75*N_SERVICES, N_SERVICES, 2*N_SERVICES]
 # Experiment with different budgets
 for strategy in STRATEGIES:
@@ -180,7 +183,7 @@ for strategy in STRATEGIES:
         experiment['desc'] = "strategy: %s, budget: %s" \
                              % (strategy, str(budget))
         EXPERIMENT_QUEUE.append(experiment)
-#"""
+"""
 # Experiment comparing FIFO with EDF 
 """
 for schedule_policy in ['EDF', 'FIFO']:
