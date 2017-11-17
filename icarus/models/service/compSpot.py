@@ -35,7 +35,7 @@ class Task(object):
     """
     A request to execute a service at a node
     """
-    def __init__(self, time, deadline, rtt_delay, node, service, service_time, flow_id, receiver, finishTime=None):
+    def __init__(self, time, deadline, rtt_delay, node, service, service_time, flow_id, receiver, finishTime=None, traffic_class = None):
         
         self.service = service
         self.time = time
@@ -46,6 +46,7 @@ class Task(object):
         self.flow_id = flow_id
         self.receiver = receiver
         self.finishTime = finishTime
+        self.traffic_class = traffic_class
 
     def print_task(self):
         print ("Task.service: " + repr(self.service))
@@ -79,8 +80,7 @@ class CpuInfo(object):
         for indx in range(0, self.numOfCores):
             if self.coreFinishTime[indx] < time:
                 self.idleTime += time - self.coreFinishTime[indx]
-                if self.coreFinishTime[indx] < time:
-                    self.coreFinishTime[indx] = time
+                self.coreFinishTime[indx] = time
         
         return self.idleTime
 
@@ -91,7 +91,7 @@ class CpuInfo(object):
         
         # update the running services 
         num_free_cores = 0
-        for indx in range(0, len(self.coreService)):
+        for indx in range(0, self.numOfCores):
             if self.coreFinishTime[indx] <= time:
                 self.idleTime += time - self.coreFinishTime[indx]
                 self.coreFinishTime[indx] = time
@@ -130,10 +130,10 @@ class CpuInfo(object):
 
     def update_core_status(self, time):
         
-        for indx in range(0, len(self.coreService)):
+        for indx in range(0, self.numOfCores):
             if self.coreFinishTime[indx] <= time:
-                self.coreFinishTime[indx] = time
                 self.idleTime += time - self.coreFinishTime[indx]
+                self.coreFinishTime[indx] = time
                 self.coreService[indx] = None
 
     def print_core_status(self):
@@ -240,7 +240,7 @@ class ComputationalSpot(object):
         # TODO: This method can simply fetch the task with the smallest finish time
         # No need to repeat the same computation already carried out by simulate()
 
-        core_indx = self.cpuInfo.get_available_core(time)[0]
+        core_indx, num_free_cores = self.cpuInfo.get_available_core(time)
         
         if (len(self.taskQueue) > 0) and (core_indx is not None):
             coreService = self.cpuInfo.coreService
@@ -314,6 +314,57 @@ class ComputationalSpot(object):
                 sched_failed = True
                 core_indx = cpuInfoCopy.coreService.index(aTask.service)
 
+    def admit_task_auction_queuing(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug, rtt_to_nextnode):
+        """
+        Admit a task if there is an idle VM or can be queued
+        """
+        serviceTime = self.services[service].service_time
+        self.cpuInfo.update_core_status(time) #need to call before simulate
+        core_indx, num_free_cores = self.cpuInfo.get_available_core(time)
+        if core_indx == None:
+            utility = self.utilities[service][traffic_class]
+            price = self.vm_prices[0]
+            if utility > price:
+                deadline = time + serviceTime #+ rtt_to_nextnode
+                aTask = Task(time, deadline, rtt_delay, self.node, service, serviceTime, flow_id, receiver, 0.0, traffic_class)
+                self.taskQueue.append(aTask)
+                self.simulate_execution(aTask, time, debug)
+                for task in self.taskQueue:
+                    if debug:
+                        print("After simulate:")
+                        task.print_task()
+                    if (task.expiry - task.rtt_delay) < task.finishTime:
+                        self.missed_requests[service] += 1
+                        if debug:
+                            print("Refusing TASK: Congestion")
+                        self.taskQueue.remove(aTask)
+                        print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + " Traffic class: " + repr(traffic_class) + " REJECTED CONG " + "queue len: " + repr(len(self.taskQueue))
+                        return [False, CONGESTION]
+                print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + " Traffic class: " + repr(traffic_class) + " ACCEPTED QUEUED " + "queue len: " + repr(len(self.taskQueue))
+                # New task can be admitted, add to service Queue
+                self.running_requests[service] += 1
+                # Run the next task (if there is any)
+                newTask = self.schedule(time) 
+                if newTask is not None:
+                    controller.add_event(newTask.finishTime, newTask.receiver, newTask.service, self.node, newTask.flow_id, newTask.traffic_class, newTask.rtt_delay, TASK_COMPLETE) 
+                    controller.execute_service(newTask.finishTime, newTask.service, self.is_cloud, newTask.traffic_class, self.utilities, price) 
+                return [True, SUCCESS]
+            else:
+                return [False, CONGESTION]
+        else:
+            utility = self.utilities[service][traffic_class]
+            price = self.vm_prices[num_free_cores-1]
+            if utility < price: # reject the request
+                print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + " Traffic class: " + repr(traffic_class) + " REJECTED UTIL " + "queue len: " + repr(len(self.taskQueue))
+                return [False, CONGESTION]
+            finishTime = time + serviceTime
+            self.cpuInfo.assign_task_to_core(core_indx, finishTime, service)
+            controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
+            controller.execute_service(time, service, self.is_cloud, traffic_class, self.utilities, price)
+            print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + "Traffic class: " + repr(traffic_class) + "ACCEPTED " + "queue len: " + repr(len(self.taskQueue))
+            return [True, SUCCESS]
+
+
     def admit_task_auction(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):
         """
         Admit a task if there is an idle VM 
@@ -322,16 +373,19 @@ class ComputationalSpot(object):
         self.cpuInfo.update_core_status(time) #need to call before simulate
         core_indx, num_free_cores = self.cpuInfo.get_available_core(time)
         if core_indx == None:
+            print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + " Traffic class: " + repr(traffic_class) + " REJECTED CONG"
             return [False, CONGESTION]
         else:
             utility = self.utilities[service][traffic_class]
             price = self.vm_prices[num_free_cores-1]
             if utility < price: # reject the request
+                print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + " Traffic class: " + repr(traffic_class) + " REJECTED UTIL"
                 return [False, CONGESTION]
             finishTime = time + serviceTime
             self.cpuInfo.assign_task_to_core(core_indx, finishTime, service)
             controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
-            controller.execute_service(time, service, self.is_cloud, traffic_class, utility, price)
+            controller.execute_service(time, service, self.is_cloud, traffic_class, self.utilities, price)
+            print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + "Traffic class: " + repr(traffic_class) + "ACCEPTED"
             return [True, SUCCESS]
     
     def compute_utilities(self):
@@ -355,7 +409,7 @@ class ComputationalSpot(object):
 
                 self.utilities[s][c] = class_u_min + (u_max - class_u_min) * pow((class_max_delay[c] - (self.delay_to_cs + self.model.topology.graph['min_delay'][c]))/class_max_delay[c], 1/self.services[s].alpha) 
 
-    def compute_prices(self, ControlPrint=True): #u,L,phi,gamma,mu_s,capacity):
+    def compute_prices(self, s=0.25,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):
         #U,L,M,X,P,Y     = returnAppSPsInfoForThisMarket(incpID,options)
         Y               = [1.0] * self.service_population
         M               = [1.0/x.service_time for x in self.services]
@@ -363,51 +417,72 @@ class ComputationalSpot(object):
         L               = self.service_class_rate
         U               = self.utilities
         #P               = [float('inf')]*self.service_population
-        P               = [100]*self.service_population
+        P               = 100.0
         vmPrices        = []
-        counter         = 0
-        breakingPoint   = 50
         X_old           = 0.0
+        requestedCapacity  = {}
+        phi = 0.2
+        for appSPID in range(self.service_population):
+            requestedCapacity[appSPID]  = []
+            for classIndex in xrange(len(L[appSPID])):
+                requestedCapacity[appSPID].append(0.0)
         print "Y = " + repr(Y)
         print "M = " + repr(M)
         print "X = " + repr(X)
         print "L = " + repr(L)
         print "U = " + repr(U)
         print "P = " + repr(P)
-        flagLastTurn  = False
         while True:#iteration
             if ControlPrint:
                 print '------------------------------'
                 print 'current price per service: ',P
-            #estimate requested and admitted traffic
+            endProcess  = False
             X_current       = 0.0
+            totalAdditionalVMsRequired  = 0.0
+            #estimate requested and admitted traffic
             for appSPID in range(self.service_population):
-                X[appSPID], x = self.stage1AppSPCompactRequestedTraffic(P[appSPID],Y[appSPID],U[appSPID],L[appSPID],M[appSPID])
-                print 'total: ' + repr(X[appSPID])
-                if X[appSPID] != 0:
-                    self.admitted_service_class_rate[appSPID] = [x[c].item(0) for c in range(self.num_classes)]
-                else:
-                    self.admitted_service_class_rate[appSPID] = [0.0 for c in range(self.num_classes)]
+                X[appSPID],x,additionalVMsRequired = self.stage1AppSPCompactRequestedTraffic(P,U[appSPID],L[appSPID],M[appSPID], requestedCapacity[appSPID])
                 X_current   += X[appSPID]
-            if X_current==X_old:
-                P,flagLastTurn  = self.brokerPriceUpdateSingleServiceNCloudlet(P)
-                if not flagLastTurn:
-                    continue
-            X_old  = X_current
-            endProcess  = self.updateVMPrices(X,M,P,vmPrices)
-            if endProcess or flagLastTurn:
+                totalAdditionalVMsRequired+=additionalVMsRequired
+            #if market has negative profit break
+            flagMonetaryLosses  = self.incpMonetaryLoss(X,M,P, phi)
+            if flagMonetaryLosses:
                 break
-        while len(vmPrices) < self.n_services:
-            vmPrices.append(0.0) 
-            #= [0.0 for x in range(self.n_services)]
-        print 'VM prices ', vmPrices
+            #if capacity of effective ration reached for some classes update the VM prices
+            while totalAdditionalVMsRequired>0:
+                if len(vmPrices)==self.n_services:#if cloudlet capacity is reached
+                    endProcess  = True
+                    break
+                vmPrices.append(P)
+                totalAdditionalVMsRequired-=1.0
+            #if there is no further allocation at this price, decrease price by s -> Dutch auction
+            if math.fabs(X_current-X_old)<0.0001:
+                P  -=s
+                if P<0.0:
+                    endProcess  = True
+            X_old  = X_current
+            #print '\t\t\t\tVM prices ',vmPrices
+            if endProcess:
+                break
+        while True:
+            if len(vmPrices)<self.n_services:
+                vmPrices.append(0.0)
+            else:
+                break
+        #delta_C=math.ceil(rho*self.n_services)-self.n_services
+        #print "delta_C: " + repr(delta_C)
+        #vmPrices  = vmPrices[int(delta_C):]
         self.vm_prices = vmPrices
+        #self.vm_prices = [0.0 for x in range(len(vmPrices))]
+        print 'VM prices ', vmPrices
         #update arrival rates for the next INCP
         for appSPID in range(self.service_population):
-            X[appSPID],x = self.stage1AppSPCompactRequestedTraffic(P[appSPID],Y[appSPID],U[appSPID],L[appSPID],M[appSPID])
-        #    if X[appSPID]==0.0:
+            X[appSPID],x,additionalVMsRequired = self.stage1AppSPCompactRequestedTraffic(P,U[appSPID],L[appSPID],M[appSPID], requestedCapacity[appSPID])
             if X[appSPID] != 0:
-                self.admitted_service_class_rate[appSPID] = [x[c].item(0) for c in range(self.num_classes)]
+                if type(x) == float:
+                    self.admitted_service_class_rate[appSPID] = [x]
+                else:
+                    self.admitted_service_class_rate[appSPID] = [x[c] for c in range(self.num_classes)]
             else:
                 self.admitted_service_class_rate[appSPID] = [0.0 for c in range(self.num_classes)]
         for appSPID in range(self.service_population):
@@ -418,70 +493,94 @@ class ComputationalSpot(object):
         #    for classID in listOfClasses:
         #        appSpLamdaPerClass[appSPID,classID] -=x[index].item(0)
         #        index+=1
-    
-    def stage1AppSPCompactRequestedTraffic(self, p, Y, u, L, mu_s, ControlPrint=False):
-        x = Variable(len(u))
+
+    def stage1AppSPCompactRequestedTraffic(self, p,u,L,mu_s,requestedCapacity,ControlPrint=False):
         #r_1 = sum_entries(x)<=Y
-        r_3 = x <=L
-        r_4 = x >=0.0
-        #constraints = [r_1,r_3,r_4]
-        constraints = [r_3,r_4]
-        p_s=[p]*len(u)
-        param  = numpy.subtract(u,p_s)
-        objective  = Maximize((1/mu_s)*sum_entries(mul_elemwise(param,x)))
+        L_new  = self.estimateMaximumEffectiveL(L,mu_s,requestedCapacity)
+        result  = 0.0
+        X_sum   = 0.0
+        x       = []
+        additionalVMsRequired  = 0.0
+        for classIndex in xrange(len(L_new)):
+            classU       = u[classIndex]
+            originalLambda  = L[classIndex]
+            classLambda  = L_new[classIndex]
+            classResult,classX  = self.appSPTrafficRequestedForThisClass(p,classU,classLambda,mu_s)
+            if math.fabs(classX-classLambda)<0.0001 and math.fabs(float(originalLambda-classLambda)/classLambda)>0.01:
+                additionalVMsRequired  += 1.0
+                requestedCapacity[classIndex] +=1
+            result  += classResult
+            X_sum   += classX
+            x.append(classX)
+        if result<0 or math.fabs(result)<0.00001:#solver error estimation
+            return X_sum,x,0.0
+        if ControlPrint:
+            print '\tAppSP gain: ',result
+            print '\t\tp ',p
+            print '\t\tx: ',x
+            print '\t\tL_new: ',L_new
+            print '\t\tL: ',L
+            print '\t\tAdditional VMs: ',additionalVMsRequired
+            #print '\t\tlamda_1: ',r_1.dual_value
+            print '\t\tsum of Xs: ',X_sum
+        return X_sum,x,additionalVMsRequired
+    
+    def estimateMaximumEffectiveL(self, L,mu_s,requestedCapacity):
+        effectiveLambda  = []
+        for classIndex in xrange(len(L)):
+            nextAvailableCapacity  = int(requestedCapacity[classIndex]+1)
+            classLambda  = L[classIndex]
+            #estimate probability 0---------
+            rho  = classLambda/mu_s
+            sumOfP_0Denominator  = 0.0
+            for s in xrange(nextAvailableCapacity+1):
+                numerator    = float(math.pow(rho,s))
+                denominator  = self.fact(s)
+                sumOfP_0Denominator +=(numerator/denominator)
+            P_0  = 1.0/sumOfP_0Denominator
+            P_s  = float(math.pow(rho,nextAvailableCapacity))/self.fact(nextAvailableCapacity)
+            P_s*=P_0
+            effectiveMaximumLambda  = classLambda*(1.0-P_s)
+            effectiveLambda.append(effectiveMaximumLambda)
+        return effectiveLambda
+
+    def fact(self, n):
+        f = 1.0
+        for x in range(1, n +1):
+            f *= x
+        return float(f)
+
+    def appSPTrafficRequestedForThisClass(self,p,classU,classLambda,mu_s):
+        x = Variable()
+        r_1 = x <=classLambda
+        r_2 = x >=0.0
+        constraints = [r_1,r_2]
+        objective   = Maximize((1/mu_s)*(classU-p)*x)
         lp1 = Problem(objective,constraints)
         result = lp1.solve()
-        Xsum  = 0.0
-        if result<0 or math.fabs(result)<0.00001:#solver error estimation
-            return Xsum,x
-        for element in x:
-            Xsum  += element.value
-        if ControlPrint:
-            print '\tAppSP gain: ',result,', ',x.value[0],', ',x.value[1]
-            #print '\t\tlamda_1: ',r_1.dual_value
-            print '\t\tsum of Xs: ',Xsum
-        return Xsum,x.value
+        return result,x.value
 
-    def brokerPriceUpdateSingleServiceNCloudlet(self, P, s=0.5):
-        flagLastTurn  = False
-        for appSPID in range(self.service_population):
-            P[appSPID]  = max(0.0,P[appSPID]-s)
-            if P[appSPID]==0.0:
-                flagLastTurn  = True
-        return P,flagLastTurn
-
-    def updateVMPrices(self, X,M,P,vmPrices, ControlPrint=False):
+    def incpMonetaryLoss(self,X,M,P,phi,ControlPrint=False):
         x      = []
-        x_sqr  = []
-        mu = []
-        W  = []
         objective  = 0.0
         y  = 0.0
         price  = 0.0
-        phi = 0.2
         for appSPID in range(self.service_population):
             m  = 1.0/M[appSPID]
-            p  = P[appSPID]-phi
-            price  = P[appSPID]
+            p  = P-phi
+            price  = P
             x  = X[appSPID]
             y +=m*x
             objective+=m*p*x #-options.gamma*pow(x,2)
         if ControlPrint:
             print 'price: ',price
             print '\tobjective: ',objective
-        endProcess  = True
+            print '\tadmitted traffic per service: ',X
+            print '\taverage number of occupied VMs: ',y
         if objective<0 and math.fabs(objective)>0.001:
-            return endProcess
-        requestedCapacity  = min(math.floor(y), self.n_services)
-        if requestedCapacity<self.n_services:
-            endProcess  = False
-        if ControlPrint:
-            print '\t\trequested capacity: ',requestedCapacity,', y: ',y
-            print '\t\t\t',X
-        for index  in xrange(len(vmPrices),int(requestedCapacity)):
-            vmPrices.append(price)
-        return endProcess
-
+            return True
+        else:
+            return False
     def admit_task_FIFO(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):
         """
         Parameters

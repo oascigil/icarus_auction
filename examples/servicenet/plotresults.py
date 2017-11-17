@@ -592,6 +592,52 @@ def print_zipf_experiment(lst):
                 f.write(s)
             f.close()
 
+def print_vm_results_one_service_one_node_k_classes(lst):
+    """
+    Print results for varying number of VMs for 1 node 1 service 2 classes
+    """
+
+    strategies = ['DOUBLE_AUCTION'] 
+    alpha = 0.75
+    num_of_vms = range(1, 11)
+    num_classes = 10
+    
+    for strategy in strategies:
+        filename = 'qos_' + str(strategy) + '_services'
+        f = open(filename, 'w')
+        f.write('# QoS for different number of VMs\n')
+        f.write('#\n')
+        f.write('# num_of_vms    qos_service    service_revenue vm_prices\n')
+        for vms in num_of_vms:
+            qos_service = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'QoS_SERVICE')
+            service_revenue = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'SERVICE_REVENUE')
+            vm_prices = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_VM_PRICES')
+            idle_times = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_VM_PRICES')
+            s = str(vms) + "\t" + str(qos_service[0]) + "\t" + str(service_revenue[0]) + "\t" + str(vm_prices[0]) + "\n"
+            f.write(s)
+    f.close()
+    
+    for strategy in strategies:
+        filename = 'qos_' + str(strategy) + '_classes'
+        f = open(filename, 'w')
+        f.write('# QoS for different number of VMs\n')
+        f.write('#\n')
+        s = 'num_of_vms'
+        for c in range(num_classes):
+            s += '  qos_class_' + str(c+1) + '  revenue_class_' + str(c+1)
+        s += "\n"
+        f.write(s)
+        for vms in num_of_vms:
+            qos_class = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'QoS_CLASS')
+            class_revenue = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'CLASS_REVENUE')
+            s = str(vms)
+            for c in range(num_classes):
+                s += "\t" + str(qos_class[c]) + "\t" + str(class_revenue[c])
+            s += "\n"
+            f.write(s)
+
+    f.close()
+
 def print_budget_experiment(lst):
     
     strategies = ['SDF', 'HYBRID', 'MFU'] 
@@ -663,8 +709,9 @@ def run(config, results, plotdir):
         printTree(l[1])
 
     #print_lru_probability_results(lst) 
+    #print_vm_results_one_service_one_node_k_classes(lst)
 
-    print_strategies_performance(lst)
+    #print_strategies_performance(lst)
     #print_budget_experiment(lst)
     #print_scheduling_experiments(lst)
     #print_zipf_experiment(lst)

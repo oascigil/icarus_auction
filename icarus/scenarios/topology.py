@@ -212,6 +212,7 @@ def topology_path(n, delay=EXTERNAL_LINK_DELAY/1000, n_classes=10, min_delay=INT
     topology : IcnTopology
         The topology object
     """
+    random.seed(0)
     topology = fnss.line_topology(n)
     # set weights and delays on all links
     fnss.set_weights_constant(topology, 1.0)
@@ -252,10 +253,10 @@ def topology_path(n, delay=EXTERNAL_LINK_DELAY/1000, n_classes=10, min_delay=INT
     
     delays = [None]*n_classes
     for i in range(n_classes):
-        random_delay = random.uniform(min_delay, max_delay)
-        topology.graph['min_delay'][i] = random_delay
-        topology.graph['max_delay'][i] = random_delay + (n)*delay
-        delays[i] = random_delay
+        #delays[i] = random.uniform(min_delay, max_delay)
+        delays[i] = max_delay - i*min_delay
+        topology.graph['min_delay'][i] = delays[i]
+        topology.graph['max_delay'][i] = delays[i] + (n)*delay
     
     # Add receivers (i.e., users) to the topology
     receiver_indx = 0

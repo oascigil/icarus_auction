@@ -98,7 +98,7 @@ class StationaryWorkload(object):
                      if topology.node[v]['stack'][0] == 'receiver']
         #self.zipf = TruncatedZipfDist(alpha, n_services-1, seed)
         self.num_classes = topology.graph['n_classes']
-        self.zipf = TruncatedZipfDist(alpha, self.num_classes-1, seed)
+        #self.zipf = TruncatedZipfDist(alpha, self.num_classes-1, seed)
         self.n_contents = n_contents
         self.contents = range(0, n_contents)
         self.n_services = n_services
@@ -113,7 +113,9 @@ class StationaryWorkload(object):
         self.rate_cum_dist = [0.0]*self.num_classes
         print "rate_dist= ", rate_dist, "\n"
         for c in range(self.num_classes):
-            self.rate_cum_dist[c] += rate_dist[c]
+            for k in range(0, c+1):
+                self.rate_cum_dist[c] += rate_dist[k]
+        print "Cumulative dist: " + repr(self.rate_cum_dist)
         if beta != 0:
             degree = nx.degree(self.topology)
             self.receivers = sorted(self.receivers, key=lambda x: degree[iter(topology.edge[x]).next()], reverse=True)
@@ -165,6 +167,7 @@ class StationaryWorkload(object):
             for c in range(self.num_classes):
                 if x < self.rate_cum_dist[c]:
                     traffic_class = c
+                    break
 
             #int(self.zipf.rv()) #random.randint(0, self.num_classes-1)
             if self.beta == 0:

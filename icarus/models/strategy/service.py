@@ -34,7 +34,7 @@ NO_INSTANCES = 4
 class DoubleAuction(Strategy):
     """A distributed approach for service-centric routing
     """
-    def __init__(self, view, controller, replacement_interval=1, debug=False, **kwargs):
+    def __init__(self, view, controller, replacement_interval=5.0, debug=False, **kwargs):
         super(DoubleAuction, self).__init__(view,controller)
         self.receivers = view.topology().receivers()
         self.compSpots = self.view.service_nodes()
@@ -50,7 +50,7 @@ class DoubleAuction(Strategy):
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
         if time - self.last_replacement > self.replacement_interval:
-            print("Evaluation interval over at time: " + repr(time))
+            #print("Evaluation interval over at time: " + repr(time))
             self.controller.replacement_interval_over(self.replacement_interval, time)
             self.last_replacement = time
         service = content
@@ -82,6 +82,13 @@ class DoubleAuction(Strategy):
                 self.controller.add_event(time+delay, receiver, service, next_node, flow_id, traffic_class, rtt_delay, RESPONSE)
 
         elif status == TASK_COMPLETE:
+            #schedule the next queued task (if this is not the cloud)
+            if node != cloud:
+                task = compSpot.schedule(time)
+                if task is not None:
+                    self.controller.add_event(task.finishTime, task.receiver, task.service, node, task.flow_id, task.traffic_class, task.rtt_delay, TASK_COMPLETE)
+                    print ("Task service: " + repr(task.service) + " traffic class: " + repr(task.traffic_class))
+                    self.controller.execute_service(task.finishTime, task.service, False, task.traffic_class, compSpot.utilities, compSpot.vm_prices[0]) 
             # forward the completed task
             path = self.view.shortest_path(node, receiver)
             next_node = path[1]
@@ -93,11 +100,12 @@ class DoubleAuction(Strategy):
             if node == cloud: # request reached the cloud
                 service_time = self.view.get_service_time(service)
                 self.controller.add_event(time+service_time, receiver, service, node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE)
-                self.controller.execute_service(time, service, True, traffic_class, 0, 0)
+                self.controller.execute_service(time, service, True, traffic_class, None, 0)
             else:    
                 path = self.view.shortest_path(node, cloud)
                 next_node = path[1]
-                ret, reason = compSpot.admit_task_auction(service, time, flow_id, traffic_class, receiver, rtt_delay, self.controller, self.debug)
+                delay = self.view.path_delay(node, next_node)
+                ret, reason = compSpot.admit_task_auction_queuing(service, time, flow_id, traffic_class, receiver, rtt_delay, self.controller, self.debug, 2*delay)
                 if ret == False:
                     delay = self.view.path_delay(node, next_node)
                     rtt_delay += 2*delay

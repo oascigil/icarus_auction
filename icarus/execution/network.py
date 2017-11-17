@@ -570,8 +570,8 @@ class NetworkModel(object):
         self.n_services = n_services
         internal_link_delay = 0.001 # This is the delay from receiver to router
         
-        service_time_min = 0.8 # used to be 0.001
-        service_time_max = 0.8 # used to be 0.1 
+        service_time_min = 10.0 # 0.51 # used to be 0.001
+        service_time_max = 10.0 #0.51 # used to be 0.1 
         #delay_min = 0.005
         delay_min = 0.001*2 + 0.020 # Remove*10
         delay_max = 0.202  #NOTE: make sure this is not too large; otherwise all requests go to cloud and are satisfied! 
