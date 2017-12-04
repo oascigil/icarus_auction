@@ -23,6 +23,7 @@ import csv
 
 import networkx as nx
 import heapq 
+import sys
 
 from icarus.tools import TruncatedZipfDist
 from icarus.registry import register_workload
@@ -138,8 +139,8 @@ class StationaryWorkload(object):
         for i in range(self.n_services*self.n_edgeRouters):
             s = (i) % (self.n_services)
             events[i] += random.expovariate(self.rates[s])
-        aFile = open('workload.txt', 'w')
-        aFile.write("# time\tnode_id\tservice_id\tTraffic_Class\n")
+        #aFile = open('workload.txt', 'w')
+        #File.write("# time\tnode_id\tservice_id\tTraffic_Class\n")
         eventObj = self.model.eventQ[0] if len(self.model.eventQ) > 0 else None
         while req_counter < self.n_warmup + self.n_measured or len(self.model.eventQ) > 0:
             #t_event += (random.expovariate(self.rate))
@@ -182,13 +183,13 @@ class StationaryWorkload(object):
             #deadline = self.model.services[content].deadline + t_event
             event = {'receiver': receiver, 'content' : content, 'log' : log, 'node' : node ,'flow_id': flow_id, 'rtt_delay' : 0, 'traffic_class': traffic_class, 'status' : REQUEST}
             neighbors = self.topology.neighbors(receiver)
-            s = str(t_event) + "\t" + str(neighbors[0]) + "\t" + str(content) + "\t" + repr(traffic_class)  + "\n"
-            aFile.write(s)
+            #s = str(t_event) + "\t" + str(neighbors[0]) + "\t" + str(content) + "\t" + repr(traffic_class)  + "\n"
+            #aFile.write(s)
             yield (t_event, event)
             req_counter += 1
         
         print "End of iteration: len(eventObj): " + repr(len(self.model.eventQ))
-        aFile.close()
+        #aFile.close()
         raise StopIteration()
 
 @register_workload('GLOBETRAFF')
@@ -311,51 +312,122 @@ class TraceDrivenWorkload(object):
         the timestamp at which the event occurs and the second element is a
         dictionary of event attributes.
     """
-
-    def __init__(self, topology, reqs_file, contents_file, n_contents,
-                 n_warmup, n_measured, rate=1.0, beta=0, **kwargs):
-        """Constructor"""
+    
+    def __init__(self, topology, n_contents, alpha, beta=0, rates=10, rate_dist=[0],
+                    n_warmup=10 ** 5, n_measured=4 * 10 ** 5, seed=0, n_services=10, **kwargs):
+        if alpha < 0:
+            raise ValueError('alpha must be positive')
         if beta < 0:
             raise ValueError('beta must be positive')
-        # Set high buffering to avoid one-line reads
-        self.buffering = 64 * 1024 * 1024
+        self.receivers = [v for v in topology.nodes_iter()
+                     if topology.node[v]['stack'][0] == 'receiver']
+        #self.zipf = TruncatedZipfDist(alpha, n_services-1, seed)
+        self.num_classes = topology.graph['n_classes']
+        #self.zipf = TruncatedZipfDist(alpha, self.num_classes-1, seed)
         self.n_contents = n_contents
+        self.contents = range(0, n_contents)
+        self.n_services = n_services
+        self.alpha = alpha
+        self.rates = rates
+        self.n_edgeRouters = topology.graph['n_edgeRouters']
         self.n_warmup = n_warmup
         self.n_measured = n_measured
-        self.reqs_file = reqs_file
-        self.rate = rate
-        self.receivers = [v for v in topology.nodes_iter()
-                          if topology.node[v]['stack'][0] == 'receiver']
-        self.contents = []
-        with open(contents_file, 'r', buffering=self.buffering) as f:
-            for content in f:
-                self.contents.append(content)
+        self.model = None
         self.beta = beta
+        self.topology = topology
+        self.rate_cum_dist = [0.0]*self.num_classes
+        print "rate_dist= ", rate_dist, "\n"
+        for c in range(self.num_classes):
+            for k in range(0, c+1):
+                self.rate_cum_dist[c] += rate_dist[k]
+        print "Cumulative dist: " + repr(self.rate_cum_dist)
         if beta != 0:
-            degree = nx.degree(topology)
-            self.receivers = sorted(self.receivers, key=lambda x:
-                                    degree[iter(topology.edge[x]).next()],
-                                    reverse=True)
-            self.receiver_dist = TruncatedZipfDist(beta, len(self.receivers))
+            degree = nx.degree(self.topology)
+            self.receivers = sorted(self.receivers, key=lambda x: degree[iter(topology.edge[x]).next()], reverse=True)
+            self.receiver_dist = TruncatedZipfDist(beta, len(self.receivers), seed)
+        
+        self.seed = seed
+        self.first = True
+        self.first_iter = True
+        self.n_edgeRouters = topology.graph['n_edgeRouters']
+
+        self.aFile = None
+        self.end_of_file = False
+        fname = './top_n_trace.txt'  #'./processed_google_trace.txt'
+        try:
+            self.aFile = open(fname, 'r')
+        except IOError:
+            print "Could not read the workload trace file:", fname
+            sys.exit()
 
     def __iter__(self):
         req_counter = 0
         t_event = 0.0
-        with open(self.reqs_file, 'r', buffering=self.buffering) as f:
-            for content in f:
-                t_event += (random.expovariate(self.rate))
+        flow_id = 0
+        
+        events = [0.0] * self.n_edgeRouters
+        
+        if self.first: #TODO remove this first variable, this is not necessary here
+            random.seed(self.seed)
+            self.first=False
+        
+        for i in range(self.n_edgeRouters):
+            events[i] += random.expovariate(self.rates)
+
+        #aFile = open('workload.txt', 'w')
+        #aFile.write("# time\tnode_id\tservice_id\tTraffic_Class\n")
+        eventObj = self.model.eventQ[0] if len(self.model.eventQ) > 0 else None
+        while self.first_iter or len(self.model.eventQ) > 0:
+            self.first_iter = False
+            nearest_event = min(events)
+            node_indx = events.index(nearest_event)
+            events[node_indx] += random.expovariate(self.rates)
+            t_event = nearest_event
+            eventObj = self.model.eventQ[0] if len(self.model.eventQ) > 0 else None
+            while eventObj is not None and eventObj.time < t_event:
+                heapq.heappop(self.model.eventQ)
+                log = (req_counter >= self.n_warmup)
+                event = {'receiver' : eventObj.receiver, 'content': eventObj.service, 'log' : log, 'node' : eventObj.node, 'flow_id' : eventObj.flow_id, 'traffic_class' : eventObj.traffic_class, 'rtt_delay' : eventObj.rtt_delay,'status' : eventObj.status}
+                yield (eventObj.time, event)
+                eventObj = self.model.eventQ[0] if len(self.model.eventQ) > 0 else None
+
+            #if req_counter >= (self.n_warmup + self.n_measured):
+                # skip below if we already sent all the requests
+            #    continue
+
+            if not self.end_of_file and (flow_id < (self.n_measured + self.n_warmup)):
+                line = self.aFile.readline()
+                content = 0
+                if not line:
+                    self.end_of_file = True
+                    print 'End of line reached'
+                    continue
+                else:
+                    content = int(line)
+
+                traffic_class = 0 
+                x = random.random()
+                for c in range(self.num_classes):
+                    if x < self.rate_cum_dist[c]:
+                        traffic_class = c
+                        break
                 if self.beta == 0:
-                    receiver = random.choice(self.receivers)
+                    receiver = self.receivers[node_indx*self.num_classes + traffic_class] #random.choice(self.receivers)
                 else:
                     receiver = self.receivers[self.receiver_dist.rv() - 1]
+                node = receiver
                 log = (req_counter >= self.n_warmup)
-                event = {'receiver': receiver, 'content': content, 'log': log}
+                flow_id += 1
+                #deadline = self.model.services[content].deadline + t_event
+                event = {'receiver': receiver, 'content' : content, 'log' : log, 'node' : node , 'flow_id': flow_id, 'rtt_delay' : 0, 'traffic_class': traffic_class, 'status' : REQUEST}
                 yield (t_event, event)
+                #neighbors = self.topology.neighbors(receiver)
+                #s = str(t_event) + "\t" + str(neighbors[0]) + "\t" + str(content) + "\t" + repr(traffic_class)  + "\n"
                 req_counter += 1
-                if(req_counter >= self.n_warmup + self.n_measured):
-                    raise StopIteration()
-            raise ValueError("Trace did not contain enough requests")
-
+            #aFile.write(s)
+        print "End of iteration: len(eventObj): " + repr(len(self.model.eventQ))
+        self.aFile.close()
+        raise StopIteration()
 
 @register_workload('YCSB')
 class YCSBWorkload(object):

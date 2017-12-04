@@ -26,7 +26,7 @@ CACHING_GRANULARITY = 'OBJECT'
 
 # Warm-up strategy
 #WARMUP_STRATEGY = 'MFU' #'HYBRID'
-WARMUP_STRATEGY = 'STATIC_FIFO' #'HYBRID'
+WARMUP_STRATEGY = 'DOUBLE_AUCTION' #'HYBRID'
 
 # Format in which results are saved.
 # Result readers and writers are located in module ./icarus/results/readwrite.py
@@ -55,13 +55,13 @@ DATA_COLLECTORS = ['LATENCY']
 # alpha = 0.799999999999 would not be recognized 
 ZIPF_EXP = 0.75
 #ALPHA = [0.00001]
-ALPHAS = [0.8, 1.0]
+ALPHAS = [0.7, 1.0]
 
 # Total size of network cache as a fraction of content population
 NETWORK_CACHE = 0.05
 
 # Number of content objects
-N_CONTENTS = 1
+N_CONTENTS = 2
 
 # SERVICE POPULATION
 N_SERVICES = N_CONTENTS
@@ -71,7 +71,7 @@ N_SERVICES = N_CONTENTS
 
 # Number of content requests generated to prepopulate the caches
 # These requests are not logged
-N_WARMUP_REQUESTS = 0 #30000
+N_WARMUP_REQUESTS = 100 #30000
 
 # Number of content requests generated after the warmup and logged
 # to generate results. 
@@ -81,11 +81,11 @@ N_WARMUP_REQUESTS = 0 #30000
 # Topology implementations are located in ./icarus/scenarios/topology.py
 TOPOLOGIES =  ['PATH']
 N_CLASSES = 10
-#RATES = [10, 10] # A rate per service
-RATES = [10] # A rate per service
-RATE_DIST = [0.30, 0.25, 0.10, 0.065, 0.058, 0.053, 0.05, 0.045, 0.04, 0.039] #negative correlation between QoS and popularity
+RATES = [5, 5] # A rate per service
+#RATES = [10] # A rate per service
+#RATE_DIST = [0.30, 0.25, 0.10, 0.065, 0.058, 0.053, 0.05, 0.045, 0.04, 0.039] #negative correlation between QoS and popularity
 #RATE_DIST.reverse() #positive corr demand and QoS
-#RATE_DIST = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # how service rates are distributed among classes
+RATE_DIST = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # how service rates are distributed among classes
 TREE_DEPTH = 1
 BRANCH_FACTOR = 2
 
@@ -161,10 +161,10 @@ default['netconf']['rate_dist'] = RATE_DIST # determines how service rate is di
 # Create experiments multiplexing all desired parameters
 
 # 1. Experiments with 1 cloudlet 1 service and k classes
-default['topology']['n'] = 1
+default['topology']['n'] = 2
 
 for strategy in ['DOUBLE_AUCTION']:
-    for num_of_vms in range(50,51):
+    for num_of_vms in range(1, 11):
         experiment = copy.deepcopy(default)
         experiment['strategy']['name'] = strategy
         experiment['warmup_strategy']['name'] = strategy

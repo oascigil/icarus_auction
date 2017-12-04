@@ -99,7 +99,7 @@ class IcnTopology(fnss.Topology):
 
 
 @register_topology_factory('TREE')
-def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=5, min_delay=INTERNAL_LINK_DELAY/1000, max_delay=EXTERNAL_LINK_DELAY/1000, **kwargs):
+def topology_tree(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_classes=10, min_delay=INTERNAL_LINK_DELAY/1000, max_delay=EXTERNAL_LINK_DELAY/1000, **kwargs):
     """Returns a tree topology, with a source at the root, receivers at the
     leafs and caches at all intermediate nodes.
 

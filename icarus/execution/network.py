@@ -599,7 +599,7 @@ class NetworkModel(object):
             deadline = deadlines[service_indx]
             diff = deadline - service_time
 
-            s = str(service_indx) + "\t" + str(service_time) + "\t" + str(deadline) + "\t" + str(diff) + "\n"
+            #s = str(service_indx) + "\t" + str(service_time) + "\t" + str(deadline) + "\t" + str(diff) + "\n"
             #aFile.write(s)
             s = Service(service_time, deadline, alphas[service_indx])
             service_indx += 1
@@ -626,7 +626,10 @@ class NetworkModel(object):
                 cs = self.compSpot[v]
                 if h == height:
                     # compute arrival rates
-                    cs.service_class_rate = [[rate_dist[x]*rates[y] for x in range(cs.num_classes)] for y in range(cs.service_population)]
+                    if type(rates) == int:
+                        cs.service_class_rate = [[rate_dist[x]*(1.0*rates)/cs.service_population for x in range(cs.num_classes)] for y in range(cs.service_population)]
+                    else:
+                        cs.service_class_rate = [[rate_dist[x]*rates[y] for x in range(cs.num_classes)] for y in range(cs.service_population)]
                 cs.compute_prices()
                 p = topology.graph['parent'][v]
                 if p != None:
@@ -710,14 +713,14 @@ class NetworkController(object):
             *True* if this session needs to be reported to the collector,
             *False* otherwise
         """
-        #self.session[flow_id] = dict(timestamp=timestamp,
-        #                    receiver=receiver,
-        #                    content=content,
-        #                    log=log,
-        #                    deadline=deadline)
+        self.session[flow_id] = dict(timestamp=timestamp,
+                            receiver=receiver,
+                            content=content,
+                            log=log,
+                            traffic_class = traffic_class)
 
-        #if self.collector is not None and self.session[flow_id]['log']:
-        self.collector.start_session(timestamp, receiver, content, flow_id, traffic_class)
+        if self.collector is not None and self.session[flow_id]['log']:
+            self.collector.start_session(timestamp, receiver, content, flow_id, traffic_class)
 
     def forward_request_path(self, s, t, path=None, main_path=True):
         """Forward a request from node *s* to node *t* over the provided path.
@@ -876,16 +879,28 @@ class NetworkController(object):
         #if self.collector is not None and self.session[flow_id]['log']:
         self.collector.replacement_interval_over(replacement_interval, timestamp)
     
-    def set_vm_prices(self, node, vm_prices): #TODO
+    def set_vm_prices(self, node, vm_prices, time=0.0): 
         """ Set the VM prices of a node
         """
-        self.collector.set_vm_prices(node, vm_prices)
+        self.collector.set_vm_prices(node, vm_prices, time)
+    
+    def set_node_util(self, node, utilities, time=0.0): 
+        """ Set the utility of each node
+        """
+        self.collector.set_node_util(node, utilities, time)
+    
+    def reject_service(self, time, flow_id, service, is_cloud, traffic_class, node, price):
+        """ Rejection of the service (request) at node with starting time
+        """
+        if self.collector is not None and self.session[flow_id]['log']:
+            self.collector.reject_service(time, service, is_cloud, traffic_class, node, price)
             
-    def execute_service(self, time, service, is_cloud, traffic_class, utility, price):
+    def execute_service(self, time, flow_id, service, is_cloud, traffic_class, node, price):
         """ Perform execution of the service at node with starting time
         """
 
-        self.collector.execute_service(time, service, is_cloud, traffic_class, utility, price)
+        if self.collector is not None and self.session[flow_id]['log']:
+            self.collector.execute_service(time, service, is_cloud, traffic_class, node, price)
     
     def end_session(self, success=True, timestamp=0, flow_id=0):
         """Close a session

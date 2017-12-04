@@ -102,13 +102,25 @@ class DataCollector(object):
 
         pass
 
-    def execute_service(self, time, service, is_cloud, traffic_class, utility, price):
+    def execute_service(self, time, service, is_cloud, traffic_class, node, price):
+        """ Reports the end of a replacement interval for services
+        """
+
+        pass
+    
+    def reject_service(self, time, service, is_cloud, traffic_class, node, price):
         """ Reports the end of a replacement interval for services
         """
 
         pass
     
     def set_vm_prices(self, node, vm_prices):
+        """ Reports the end of a replacement interval for services
+        """
+        
+        pass
+
+    def set_node_util(self, node, utilities):
         """ Reports the end of a replacement interval for services
         """
         
@@ -183,7 +195,8 @@ class CollectorProxy(DataCollector):
     """
 
     EVENTS = ('start_session', 'end_session', 'cache_hit', 'cache_miss', 'server_hit',
-              'request_hop', 'content_hop', 'results', 'replacement_interval_over', 'execute_service', 'set_vm_prices')
+              'request_hop', 'content_hop', 'results', 'replacement_interval_over', 
+              'execute_service', 'reject_service', 'set_vm_prices', 'set_node_util')
 
     def __init__(self, view, collectors):
         """Constructor
@@ -235,13 +248,24 @@ class CollectorProxy(DataCollector):
             c.replacement_interval_over(replacement_interval, timestamp)
 
     @inheritdoc(DataCollector)
-    def execute_service(self, time, service, is_cloud, traffic_class, utility, price):
+    def execute_service(self, time, service, is_cloud, traffic_class, node, price):
         for c in self.collectors['execute_service']:
-            c.execute_service(time, service, is_cloud, traffic_class, utility, price)
+            c.execute_service(time, service, is_cloud, traffic_class, node, price)
     
-    def set_vm_prices(self, node, vm_prices):
+    @inheritdoc(DataCollector)
+    def reject_service(self, time, service, is_cloud, traffic_class, node, price):
+        for c in self.collectors['execute_service']:
+            c.reject_service(time, service, is_cloud, traffic_class, node, price)
+    
+    @inheritdoc(DataCollector)
+    def set_vm_prices(self, node, vm_prices, time):
         for c in self.collectors['set_vm_prices']:
-            c.set_vm_prices(node, vm_prices)
+            c.set_vm_prices(node, vm_prices, time)
+
+    @inheritdoc(DataCollector)
+    def set_node_util(self, node, utilities, time):
+        for c in self.collectors['set_node_util']:
+            c.set_node_util(node, utilities, time)
 
     @inheritdoc(DataCollector)
     def end_session(self, success=True, time=0, flow_id=0):
@@ -343,6 +367,8 @@ class LatencyCollector(DataCollector):
 
         # Time series for various metrics
         self.idle_times = {}
+        self.sat_times = {}
+        self.price_times = {}
         self.node_idle_times = {}
         # price for each node
         self.node_prices = {}
@@ -356,52 +382,73 @@ class LatencyCollector(DataCollector):
         self.service_executed_requests = [0 for x in range(self.n_services)]
         self.class_revenue = [0.0 for x in range(self.num_classes)]
         self.service_revenue = [0.0 for x in range(self.n_services)]
-        self.utilities = None
+        self.node_utilities = {}
         self.class_sat_rate = [0.0 for x in range(self.num_classes)]
         self.service_sat_rate = [0.0 for x in range(self.n_services)]
         self.min_price = {}
+        self.sat_requests_nodes = {x:0 for x in self.css.keys()}
+        self.rejected_requests_nodes = {x:0 for x in self.css.keys()}
     
     @inheritdoc(DataCollector)
-    def execute_service(self, time, service, is_cloud, traffic_class, utilities, price):
-        utility = 0.0
-        if utilities is not None:
-            utility = utilities[service][traffic_class]
+    def execute_service(self, time, service, is_cloud, traffic_class, node, price):
 
         if not is_cloud:
+            utility = self.node_utilities[node][service][traffic_class]
             self.qos_class[traffic_class] += utility
             self.class_executed_requests[traffic_class] += 1
             self.service_executed_requests[service] += 1
             self.qos_service[service] += utility
             self.class_revenue[traffic_class] += price
             self.service_revenue[service] += price
+            self.sat_requests_nodes[node] += 1
         
-        if self.utilities is None and utilities is not None:
-            self.utilities = utilities
+    @inheritdoc(DataCollector)
+    def reject_service(self, time, service, is_cloud, traffic_class, node, price):
+        if not is_cloud:
+            self.rejected_requests_nodes[node] += 1
+
 
     @inheritdoc(DataCollector)
-    def set_vm_prices(self, node, vm_prices):
+    def set_vm_prices(self, node, vm_prices, time):
         self.node_prices[node] = vm_prices
         self.min_price[node] = vm_prices[len(vm_prices)-1]
+        if time in self.price_times.keys():
+            self.price_times[time].append(vm_prices[0])
+        else:
+            self.price_times[time] = [vm_prices[0]]
         
+    @inheritdoc(DataCollector)
+    def set_node_util(self, node, utilities, time):
+        self.node_utilities[node] = utilities
+
     @inheritdoc(DataCollector)
     def replacement_interval_over(self, replacement_interval, timestamp):
         total_idle_time = 0.0
+        self.node_idle_times[timestamp] = []
         for node, cs in self.css.items():
             if cs.is_cloud:
                 continue
             
             idle_time = cs.getIdleTime(timestamp)
             total_idle_time += idle_time
+
+            self.node_idle_times[timestamp].append(1.0*idle_time/(cs.numOfCores*replacement_interval))
             cs.cpuInfo.idleTime = 0.0
-
-            if node not in self.node_idle_times.keys():
-                self.node_idle_times[node] = []
-
-            self.node_idle_times[node].append(idle_time)
 
         #print "Timestamp: " + repr(timestamp) + " Idle time : " + repr(total_idle_time)
         self.idle_times[timestamp] = (1.0*total_idle_time)/(1.0*cs.numOfCores*replacement_interval)
-        #print "idle_times[" + repr(timestamp) + "] = " + repr(self.idle_times[timestamp])
+        
+        self.sat_times[timestamp] = []
+        for node, cs in self.css.items():
+            if cs.is_cloud:
+                continue
+            node_sat = (1.0*self.sat_requests_nodes[node])/(self.rejected_requests_nodes[node] + self.sat_requests_nodes[node])
+            self.sat_times[timestamp].append(node_sat)
+            print ("Accepted requests @node: " + repr(node) + " is " + repr(self.sat_requests_nodes[node]))
+            print ("Rejected requests @node: " + repr(node) + " is " + repr(self.rejected_requests_nodes[node]))
+            self.sat_requests_nodes[node] = 0
+            self.rejected_requests_nodes[node] = 0
+
         # Initialise interval counts
         self.interval_sess_count = 0
         self.qos_interval = 0.0
@@ -423,10 +470,6 @@ class LatencyCollector(DataCollector):
         if main_path:
             self.sess_latency += self.view.link_delay(u, v)
 
-    #@inheritdoc(DataCollector)
-    #def end_session(self, success=True, timestamp=0, flow_id=0):
-        
-
     @inheritdoc(DataCollector)
     def results(self):
         for c in range(self.num_classes):
@@ -447,10 +490,10 @@ class LatencyCollector(DataCollector):
         results = Tree({'QoS_CLASS' : self.qos_class})
         per_service_sats = {}
         for s in range(self.n_services):
-            if self.service_executed_requests[s] == 0:
+            if self.service_requests[s] == 0:
                 self.qos_service[s] = 0.0
             else:
-                self.qos_service[s] = self.qos_service[s]/self.service_executed_requests[s]
+                self.qos_service[s] = self.qos_service[s]/self.service_requests[s]
             self.service_revenue[s] = self.service_revenue[s] #/self.service_executed_requests[s]
             if self.service_requests[s] > 0:
                 self.service_sat_rate[s] = (1.0*self.service_executed_requests[s]) / self.service_requests[s]
@@ -459,19 +502,22 @@ class LatencyCollector(DataCollector):
 
             print "QoS for service: " + repr(s) + " is " + repr(self.qos_service[s])
             print "Per-request revenue from service: " + repr(s) + " is " + repr(self.service_revenue[s])
+
         results['IDLE_TIMES'] = sum(self.idle_times.values())/len(self.idle_times.keys())
         #print "Idle times: " + repr(self.idle_times)
-        #results['NODE_IDLE_TIMES'] = self.node_idle_times
         results['QoS_SERVICE'] = self.qos_service
         results['NODE_VM_PRICES'] = self.node_prices
         results['CLASS_REVENUE'] = self.class_revenue
         results['SERVICE_REVENUE'] = self.service_revenue
-        results['UTILITIES'] = self.utilities
+        #results['NODE_UTILITIES'] = self.node_utilities
         results['CLASS_SAT_RATE'] = self.class_sat_rate
         results['SERVICE_SAT_RATE'] = self.service_sat_rate
         results['SERVICE_RATE'] = self.service_requests
         results['CLASS_RATE'] = self.class_requests
         results['MIN_PRICE'] = self.min_price
+        results['SAT_TIMES'] = self.sat_times #{x:1.0*sum(self.sat_times[x])/len(self.sat_times[x]) for x in self.sat_times.keys()}
+        results['PRICE_TIMES'] = self.price_times
+        results['NODE_IDLE_TIMES'] = self.node_idle_times
         
         """
         print "Printing Idle times:"
