@@ -353,7 +353,7 @@ class TraceDrivenWorkload(object):
 
         self.aFile = None
         self.end_of_file = False
-        fname = './top_n_trace.txt'  #'./processed_google_trace.txt'
+        fname = './top_n_trace.txt' #'./top_n_trace.txt'  #'./processed_google_trace.txt'
         try:
             self.aFile = open(fname, 'r')
         except IOError:
@@ -371,6 +371,7 @@ class TraceDrivenWorkload(object):
             random.seed(self.seed)
             self.first=False
         
+        print ("The request generation rate (per sec) is: " + repr(self.rates))
         for i in range(self.n_edgeRouters):
             events[i] += random.expovariate(self.rates)
 
@@ -395,7 +396,7 @@ class TraceDrivenWorkload(object):
                 # skip below if we already sent all the requests
             #    continue
 
-            if not self.end_of_file and (flow_id < (self.n_measured + self.n_warmup)):
+            if (not self.end_of_file) and (flow_id < (self.n_measured + self.n_warmup)):
                 line = self.aFile.readline()
                 content = 0
                 if not line:

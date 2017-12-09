@@ -202,6 +202,13 @@ class NetworkView(object):
         """
         return self.model.n_services
 
+    def num_traffic_classes(self):
+        """
+        Returns the number of QoS traffic classes in auction-based scenarios
+        """
+
+        return self.model.topology.graph['n_classes']
+
     def all_pairs_shortest_paths(self):
         """Return all pairs shortest paths
 

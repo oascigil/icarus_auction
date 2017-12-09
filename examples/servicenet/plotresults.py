@@ -635,6 +635,59 @@ def print_vm_results_n_services_one_node_k_classes(lst):
             f.write(s)
     f.close()
 
+def print_trace_results(lst):
+    """
+    Print results for Google traces with varying observation periods (i.e., price recomputation at each period)
+    """
+
+    num_of_nodes = 3
+
+    periods = [60]
+    strategies = ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']
+    strategies = ['STATIC_TRACE']
+    
+    for strategy in strategies:
+        filename = "trace_performance_" + str(strategy) + ".txt"
+        f = open(filename, 'w')
+        f.write("# Price, Sat, Idle, QoS times for strategy: " + str(strategy) + "\n")
+        f.write('#\n')
+        #for node in range(num_of_nodes):
+        s = "Time    Price    SatRate    PercentIdleTime   QoS    Revenue\n"
+        f.write(s)
+
+        qos_times = searchDictMultipleCat(lst, ['strategy'], {'name' : strategy}, 1, 'LATENCY', 'QOS_TIMES')
+        qos_times = dict(qos_times)
+        sat_times = searchDictMultipleCat(lst, ['strategy'], {'name' : strategy}, 1, 'LATENCY', 'SAT_TIMES')
+        sat_times = dict(sat_times)
+        idle_times = searchDictMultipleCat(lst, ['strategy'], {'name' : strategy}, 1, 'LATENCY', 'NODE_IDLE_TIMES')
+        idle_times = dict(idle_times)
+        rev_times = searchDictMultipleCat(lst, ['strategy'], {'name' : strategy}, 1, 'LATENCY', 'REVENUE_TIMES')
+        rev_times = dict(rev_times)
+        price_times = searchDictMultipleCat(lst, ['strategy'], {'name' : strategy}, 1, 'LATENCY', 'PRICE_TIMES')
+        price_times = dict(price_times)
+
+        print "\n\n"
+        print "Price_times: " + repr(dict(price_times))
+        print "\n\n"
+        print "Sat_times: " + repr(sat_times)
+        print "\n\n"
+        print "idle_times: " + repr(idle_times)
+        print "\n\n"
+        print "rev_times: " + repr(idle_times)
+        
+        for t in sorted(price_times):
+            if t == 0:
+                continue
+            s = str(t)
+            s += "   " + str(1.0*sum(price_times[t])/len(price_times[t]))
+            s += "   " + str(1.0*sum(sat_times[t])/len(sat_times[t]))
+            s += "   " + str(1.0*sum(idle_times[t])/len(idle_times[t]))
+            s += "   " + str(qos_times[t])
+            s += "   " + str(rev_times[t])
+            s += "\n"
+            f.write(s)
+        f.close()
+
 def print_vm_results_one_service_one_node_k_classes(lst):
     """
     Print results for varying number of VMs for 1 node 1 service 10 classes
@@ -756,6 +809,7 @@ def run(config, results, plotdir):
 
     #print_lru_probability_results(lst) 
     #print_vm_results_one_service_one_node_k_classes(lst)
+    print_trace_results(lst)
     #print_vm_results_n_services_one_node_k_classes(lst)
 
     #print_strategies_performance(lst)

@@ -370,6 +370,8 @@ class LatencyCollector(DataCollector):
         self.sat_times = {}
         self.price_times = {}
         self.node_idle_times = {}
+        self.qos_times = {}
+        self.revenue_times = {}
         # price for each node
         self.node_prices = {}
         # total qos for each class 
@@ -385,9 +387,11 @@ class LatencyCollector(DataCollector):
         self.node_utilities = {}
         self.class_sat_rate = [0.0 for x in range(self.num_classes)]
         self.service_sat_rate = [0.0 for x in range(self.n_services)]
-        self.min_price = {}
         self.sat_requests_nodes = {x:0 for x in self.css.keys()}
         self.rejected_requests_nodes = {x:0 for x in self.css.keys()}
+        self.qos_total = 0.0
+        self.revenue_total = 0.0
+        self.num_executed = 0
     
     @inheritdoc(DataCollector)
     def execute_service(self, time, service, is_cloud, traffic_class, node, price):
@@ -401,21 +405,22 @@ class LatencyCollector(DataCollector):
             self.class_revenue[traffic_class] += price
             self.service_revenue[service] += price
             self.sat_requests_nodes[node] += 1
+            self.qos_total += utility
+            self.revenue_total += price
+            self.num_executed += 1
         
     @inheritdoc(DataCollector)
     def reject_service(self, time, service, is_cloud, traffic_class, node, price):
         if not is_cloud:
             self.rejected_requests_nodes[node] += 1
 
-
     @inheritdoc(DataCollector)
     def set_vm_prices(self, node, vm_prices, time):
         self.node_prices[node] = vm_prices
-        self.min_price[node] = vm_prices[len(vm_prices)-1]
         if time in self.price_times.keys():
-            self.price_times[time].append(vm_prices[0])
+            self.price_times[time].append((1.0*sum(vm_prices))/len(vm_prices))
         else:
-            self.price_times[time] = [vm_prices[0]]
+            self.price_times[time] = [(1.0*sum(vm_prices))/len(vm_prices)]
         
     @inheritdoc(DataCollector)
     def set_node_util(self, node, utilities, time):
@@ -425,18 +430,29 @@ class LatencyCollector(DataCollector):
     def replacement_interval_over(self, replacement_interval, timestamp):
         total_idle_time = 0.0
         self.node_idle_times[timestamp] = []
+        if self.num_executed > 0:
+            self.qos_times[timestamp] = (1.0*self.qos_total)/self.num_executed
+        else:
+            self.qos_times[timestamp] = 0.0
+        self.revenue_times[timestamp] = (1.0*self.revenue_total)
+        self.num_executed = 0
+        self.qos_total = 0.0
+        self.revenue_total = 0.0
+        numberOfnodes = 0
         for node, cs in self.css.items():
             if cs.is_cloud:
                 continue
             
             idle_time = cs.getIdleTime(timestamp)
             total_idle_time += idle_time
+            total_idle_time /= cs.numOfCores
 
             self.node_idle_times[timestamp].append(1.0*idle_time/(cs.numOfCores*replacement_interval))
             cs.cpuInfo.idleTime = 0.0
+            numberOfnodes += 1
 
         #print "Timestamp: " + repr(timestamp) + " Idle time : " + repr(total_idle_time)
-        self.idle_times[timestamp] = (1.0*total_idle_time)/(1.0*cs.numOfCores*replacement_interval)
+        self.idle_times[timestamp] = (1.0*total_idle_time)/(1.0*replacement_interval*numberOfnodes)
         
         self.sat_times[timestamp] = []
         for node, cs in self.css.items():
@@ -485,8 +501,8 @@ class LatencyCollector(DataCollector):
             else:
                 self.class_sat_rate[c] = 0.0
 
-            print "QoS for class: " + repr(c) + " is " + repr(self.qos_class[c])
-            print "Per-request revenue from class: " + repr(c) + " is " + repr(self.class_revenue[c])
+            #print "QoS for class: " + repr(c) + " is " + repr(self.qos_class[c])
+            #print "Per-request revenue from class: " + repr(c) + " is " + repr(self.class_revenue[c])
         results = Tree({'QoS_CLASS' : self.qos_class})
         per_service_sats = {}
         for s in range(self.n_services):
@@ -500,12 +516,14 @@ class LatencyCollector(DataCollector):
             else:
                 self.service_sat_rate[s] = 0.0
 
-            print "QoS for service: " + repr(s) + " is " + repr(self.qos_service[s])
-            print "Per-request revenue from service: " + repr(s) + " is " + repr(self.service_revenue[s])
+            #print "QoS for service: " + repr(s) + " is " + repr(self.qos_service[s])
+            #print "Per-request revenue from service: " + repr(s) + " is " + repr(self.service_revenue[s])
 
-        results['IDLE_TIMES'] = sum(self.idle_times.values())/len(self.idle_times.keys())
+        results['IDLE_TIMES'] = self.idle_times 
         #print "Idle times: " + repr(self.idle_times)
         results['QoS_SERVICE'] = self.qos_service
+        results['QOS_TIMES'] = self.qos_times
+        results['REVENUE_TIMES'] = self.revenue_times
         results['NODE_VM_PRICES'] = self.node_prices
         results['CLASS_REVENUE'] = self.class_revenue
         results['SERVICE_REVENUE'] = self.service_revenue
@@ -514,7 +532,6 @@ class LatencyCollector(DataCollector):
         results['SERVICE_SAT_RATE'] = self.service_sat_rate
         results['SERVICE_RATE'] = self.service_requests
         results['CLASS_RATE'] = self.class_requests
-        results['MIN_PRICE'] = self.min_price
         results['SAT_TIMES'] = self.sat_times #{x:1.0*sum(self.sat_times[x])/len(self.sat_times[x]) for x in self.sat_times.keys()}
         results['PRICE_TIMES'] = self.price_times
         results['NODE_IDLE_TIMES'] = self.node_idle_times

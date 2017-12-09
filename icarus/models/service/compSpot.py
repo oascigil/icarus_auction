@@ -71,8 +71,10 @@ class CpuInfo(object):
         self.numOfCores = numOfCores
         # Hypothetical finish time of the last request (i.e., tail of the queue)
         self.coreFinishTime = [0]*self.numOfCores 
-        # Currently running service instance at each cpu (scheduled earlier)
+        # Currently running service instance at each cpu core (scheduled earlier)
         self.coreService = [None]*self.numOfCores
+        # Currently running service instance at each cpu core (scheduled earlier)
+        self.coreServiceClass = [[None, None]]*self.numOfCores
         # Idle time of the server
         self.idleTime = 0.0
 
@@ -83,6 +85,8 @@ class CpuInfo(object):
             if self.coreFinishTime[indx] < time:
                 self.idleTime += time - self.coreFinishTime[indx]
                 self.coreFinishTime[indx] = time
+                self.coreService[indx] = None
+                self.coreServiceClass[indx] = [None, None]
         
         return self.idleTime
 
@@ -98,6 +102,7 @@ class CpuInfo(object):
                 self.idleTime += time - self.coreFinishTime[indx]
                 self.coreFinishTime[indx] = time
                 self.coreService[indx] = None
+                self.coreServiceClass[indx] = [None, None]
                 num_free_cores += 1
             
         indx = self.coreFinishTime.index(min(self.coreFinishTime))
@@ -112,7 +117,9 @@ class CpuInfo(object):
         If there isn't, return None
         """
         core_indx = self.get_available_core(time)
-        if self.coreFinishTime[core_indx] == time:
+        if self.coreFinishTime[core_indx] <= time:
+            self.coreService[indx] = None
+            self.coreServiceClass[indx] = [None, None]
             return core_indx
         else:
             return None
@@ -122,13 +129,15 @@ class CpuInfo(object):
         
         return indx
 
-    def assign_task_to_core(self, core_indx, fin_time, service):
+    def assign_task_to_core(self, core_indx, fin_time, service, traffic_class=None):
         
         if self.coreFinishTime[core_indx] > fin_time:
             raise ValueError("Error in assign_task_to_core: there is a running task")
         
         self.coreService[core_indx] = service
         self.coreFinishTime[core_indx] = fin_time
+        if traffic_class is not None:
+            self.coreServiceClass[core_indx] = [service, traffic_class]
 
     def update_core_status(self, time):
         
@@ -137,6 +146,18 @@ class CpuInfo(object):
                 self.idleTime += time - self.coreFinishTime[indx]
                 self.coreFinishTime[indx] = time
                 self.coreService[indx] = None
+                self.coreServiceClass[indx] = [None, None]
+
+    def count_running_service(self, service):
+        """Count the currently running VM instances for service s
+        """
+
+        return self.coreService.count(service)
+
+    def count_running_service_type(self, service, traffic_class):
+        """Count the currently running VM instances for service type (service+class)
+        """
+        return self.coreServiceClass.count([service, traffic_class])
 
     def print_core_status(self):
         for indx in range(0, len(self.coreService)):
@@ -191,7 +212,10 @@ class ComputationalSpot(object):
         self.taskQueue = []
         
         # num. of instances of each service in the memory
-        self.numberOfInstances = [0]*self.service_population 
+        self.numberOfInstances = [[0 for x in range(self.num_classes)] for y in range(self.service_population)]
+        
+        # price for each service and class (service type) ued by self-tuning apprach
+        self.service_class_price = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]
 
         # server missed requests (due to congestion)
         self.missed_requests = [0] * self.service_population
@@ -223,15 +247,16 @@ class ComputationalSpot(object):
         self.admitted_service_rate = [0.0]*self.service_population
         self.admitted_service_class_rate = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]
 
-        # TODO setup all the variables: numberOfInstances, cpuInfo, etc. ...
-        #num_services = 0
+        # Setup all the variables: numberOfInstances, cpuInfo, etc. ...
+        num_services = 0
         #if dist is None and self.is_cloud == False:
+        if self.is_cloud == False:
             # setup a random set of services to run in the memory
-        #    while num_services < self.n_services:
-        #        service_index = random.choice(range(0, self.service_population))
-        #        if self.numberOfInstances[service_index] == 0:
-        #            self.numberOfInstances[service_index] = 1
-        #            num_services += 1
+            while num_services < self.n_services:
+                service_index = random.choice(range(0, self.service_population))
+                class_index = random.choice(range(0, self.num_classes))
+                self.numberOfInstances[service_index][class_index] += 1
+                num_services += 1
         #            evicted = self.model.cache[node].put(service_index) # HACK: should use controller here   
         #            print ("Evicted: " + repr(evicted))
 
@@ -396,6 +421,67 @@ class ComputationalSpot(object):
             controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
             #print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + "Traffic class: " + repr(traffic_class) + "ACCEPTED"
             return [True, SUCCESS]
+    
+    def admit_self_tuning(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):
+        """
+        Admit a task if there is an idle VM for the given service
+        This strategy allocates VMs for specific service types (i,e., service + traffic_class)
+        """
+        self.service_class_count[service][traffic_class] += 1
+        serviceTime = self.services[service].service_time
+        self.cpuInfo.update_core_status(time) #need to call before simulate
+        price = 0
+        if self.numberOfInstances[service][traffic_class] > 0:
+            price = self.service_class_price[service][traffic_class]
+        else:
+            controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            return [False, CONGESTION]
+
+        core_indx, num_free_cores = self.cpuInfo.get_available_core(time)
+        if core_indx == None:
+            controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            return [False, CONGESTION]
+        else:
+            if self.cpuInfo.count_running_service_type(service, traffic_class) >= self.numberOfInstances[service][traffic_class]:
+                controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+                return [False, CONGESTION]
+
+            #utility = self.utilities[service][traffic_class]
+            finishTime = time + serviceTime
+            self.cpuInfo.assign_task_to_core(core_indx, finishTime, service, traffic_class)
+            controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
+            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            return [True, SUCCESS]
+    
+    def admit_static_provisioning(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):
+        """
+        Admit a task if there is an idle VM for the given service
+        This strategy allocates VMs for specific service types (i,e., service + traffic_class)
+        """
+        serviceTime = self.services[service].service_time
+        self.cpuInfo.update_core_status(time) #need to call before simulate
+        price = 0
+        if self.numberOfInstances[service] > 0:
+            price = self.service_class_price[service][traffic_class]
+        else:
+            controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            return [False, CONGESTION]
+
+        core_indx, num_free_cores = self.cpuInfo.get_available_core(time)
+        if core_indx == None:
+            controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            return [False, CONGESTION]
+        else:
+            if self.cpuInfo.count_running_service(service) >= self.numberOfInstances[service]:
+                controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+                return [False, CONGESTION]
+
+            #utility = self.utilities[service][traffic_class]
+            finishTime = time + serviceTime
+            self.cpuInfo.assign_task_to_core(core_indx, finishTime, service, traffic_class)
+            controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
+            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            return [True, SUCCESS]
 
     def compute_utilities(self):
         u_max = 100.0
@@ -533,7 +619,9 @@ class ComputationalSpot(object):
         rho  = float(L)/float(mu_s)
         totalCapacity  = int(totalCapacity)
         P_s,P_0  = self.P_sEstimation(totalCapacity,totalCapacity,rho)
+        print ("Lambda = " + repr(L))
         effectiveLambda  = L*(1.0-P_s)
+        print ("Effective Lambda = " + repr(effectiveLambda))
         return effectiveLambda
     def P_sEstimation(self,s,totalCapacity,rho):
         #estimate P_0----------------------
@@ -546,6 +634,25 @@ class ComputationalSpot(object):
         P_s  = float(math.pow(rho,s))/self.fact(s)
         P_s *= P_0
         return P_s,P_0
+    """
+    def P_sEstimation(self,s,totalCapacity,rho):
+        #estimate P_0----------------------
+        sumOfP_0Denominator  = 0.0
+        for index in xrange(totalCapacity+1):
+            try:
+                numerator    = float(math.pow(rho,index))
+            except OverflowError:
+                numerator = float('inf')
+            denominator  = self.fact(index)
+            sumOfP_0Denominator +=(numerator/denominator)
+        P_0  = 1.0/sumOfP_0Denominator
+        try:
+            P_s  = float(math.pow(rho,s))/self.fact(s)
+        except OverflowError:
+            P_s = float('inf')
+        P_s *= P_0
+        return P_s,P_0
+    """
     def fact(self, n):
         f = 1.0
         for x in range(1, n +1):
