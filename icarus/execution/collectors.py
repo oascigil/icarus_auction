@@ -114,7 +114,13 @@ class DataCollector(object):
 
         pass
     
-    def set_vm_prices(self, node, vm_prices):
+    def set_vm_prices(self, node, vm_prices, time=0):
+        """ Reports the end of a replacement interval for services
+        """
+        
+        pass
+
+    def set_node_traffic_rates(self, node, time, rates, eff_rates):
         """ Reports the end of a replacement interval for services
         """
         
@@ -196,7 +202,7 @@ class CollectorProxy(DataCollector):
 
     EVENTS = ('start_session', 'end_session', 'cache_hit', 'cache_miss', 'server_hit',
               'request_hop', 'content_hop', 'results', 'replacement_interval_over', 
-              'execute_service', 'reject_service', 'set_vm_prices', 'set_node_util')
+              'execute_service', 'reject_service', 'set_vm_prices', 'set_node_traffic_rates', 'set_node_util')
 
     def __init__(self, view, collectors):
         """Constructor
@@ -258,9 +264,14 @@ class CollectorProxy(DataCollector):
             c.reject_service(time, service, is_cloud, traffic_class, node, price)
     
     @inheritdoc(DataCollector)
-    def set_vm_prices(self, node, vm_prices, time):
+    def set_vm_prices(self, node, vm_prices, time=0):
         for c in self.collectors['set_vm_prices']:
             c.set_vm_prices(node, vm_prices, time)
+
+    @inheritdoc(DataCollector)
+    def set_node_traffic_rates(self, node, time, rates, eff_rates):
+        for c in self.collectors['set_vm_prices']:
+            c.set_node_traffic_rates(node, time, rates, eff_rates)
 
     @inheritdoc(DataCollector)
     def set_node_util(self, node, utilities, time):
@@ -372,6 +383,8 @@ class LatencyCollector(DataCollector):
         self.node_idle_times = {}
         self.qos_times = {}
         self.revenue_times = {}
+        self.node_rate_times = {}
+        self.node_eff_rate_times = {}
         # price for each node
         self.node_prices = {}
         # total qos for each class 
@@ -422,6 +435,18 @@ class LatencyCollector(DataCollector):
         else:
             self.price_times[time] = [(1.0*sum(vm_prices))/len(vm_prices)]
         
+    @inheritdoc(DataCollector)
+    def set_node_traffic_rates(self, node, time, rates, eff_rates):
+        if time in self.node_eff_rate_times.keys():
+            self.node_eff_rate_times[time].append([node, eff_rates])
+        else:
+            self.node_eff_rate_times[time] = [[node, eff_rates]]
+
+        if time in self.node_rate_times.keys():
+            self.node_rate_times[time].append([node, rates])
+        else:
+            self.node_rate_times[time] = [[node, rates]]
+
     @inheritdoc(DataCollector)
     def set_node_util(self, node, utilities, time):
         self.node_utilities[node] = utilities
@@ -519,7 +544,7 @@ class LatencyCollector(DataCollector):
             #print "QoS for service: " + repr(s) + " is " + repr(self.qos_service[s])
             #print "Per-request revenue from service: " + repr(s) + " is " + repr(self.service_revenue[s])
 
-        results['IDLE_TIMES'] = self.idle_times 
+        results['IDLE_TIMES'] = self.idle_times #sum(self.idle_times.values())/len(self.idle_times.keys())
         #print "Idle times: " + repr(self.idle_times)
         results['QoS_SERVICE'] = self.qos_service
         results['QOS_TIMES'] = self.qos_times
@@ -527,7 +552,6 @@ class LatencyCollector(DataCollector):
         results['NODE_VM_PRICES'] = self.node_prices
         results['CLASS_REVENUE'] = self.class_revenue
         results['SERVICE_REVENUE'] = self.service_revenue
-        #results['NODE_UTILITIES'] = self.node_utilities
         results['CLASS_SAT_RATE'] = self.class_sat_rate
         results['SERVICE_SAT_RATE'] = self.service_sat_rate
         results['SERVICE_RATE'] = self.service_requests
@@ -535,6 +559,13 @@ class LatencyCollector(DataCollector):
         results['SAT_TIMES'] = self.sat_times #{x:1.0*sum(self.sat_times[x])/len(self.sat_times[x]) for x in self.sat_times.keys()}
         results['PRICE_TIMES'] = self.price_times
         results['NODE_IDLE_TIMES'] = self.node_idle_times
+        results['NODE_UTILITIES'] = self.node_utilities
+        results['IDLE_TIMES_AVG'] = sum(self.idle_times.values())/len(self.idle_times.keys())
+        results['REVENUE_TIMES_AVG'] = sum(self.revenue_times.values())/len(self.revenue_times.keys())
+        results['PRICE_TIMES_AVG'] = sum([x[0] for x in self.price_times.values()])/len(self.price_times.keys())
+        results['QOS_TIMES_AVG'] = sum(self.qos_times.values())/len(self.qos_times.keys())
+        results['NODE_RATE_TIMES'] = self.node_rate_times
+        results['NODE_EFF_RATE_TIMES'] = self.node_eff_rate_times
         
         """
         print "Printing Idle times:"

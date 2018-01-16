@@ -53,9 +53,9 @@ EVENTS	execution/collectors.py	/^    EVENTS = ('start_session', 'end_session', '
 EXTERNAL_LINK_DELAY	scenarios/topology.py	/^EXTERNAL_LINK_DELAY = 34$/;"	v
 Edge	models/strategy/onpath.py	/^class Edge(Strategy):$/;"	c
 Event	execution/network.py	/^class Event(object):$/;"	c
+Fifo	models/strategy/service.py	/^class Fifo(Strategy):$/;"	c
 FifoCache	models/cache/policies.py	/^class FifoCache(Cache):$/;"	c
 GlobetraffWorkload	scenarios/workload.py	/^class GlobetraffWorkload(object):$/;"	c
-GlobetraffWorkload	scenarios/workloadfoo.py	/^class GlobetraffWorkload(object):$/;"	c
 H	tools/cacheperf.py	/^    def H(N, alpha):$/;"	f	function:laoutaris_characteristic_time
 HATCH_CATALOGUE	results/plot.py	/^HATCH_CATALOGUE = [None, '\/', '\\\\', '\\\\\\\\', '\/\/', '+', 'x', '*', 'o', '.', '|', '-', 'O']$/;"	v
 Hashrouting	models/strategy/hashrouting.py	/^class Hashrouting(BaseHashrouting):$/;"	c
@@ -74,6 +74,7 @@ IcnTopology	models/strategy/tests/test_strategy.py	/^from icarus.scenarios impor
 IcnTopology	scenarios/topology.py	/^class IcnTopology(fnss.Topology):$/;"	c
 InCacheLfuCache	models/cache/policies.py	/^class InCacheLfuCache(Cache):$/;"	c
 LEGEND_SIZE	results/plot.py	/^LEGEND_SIZE = 14$/;"	v
+LFUTrace	models/strategy/service.py	/^class LFUTrace(Strategy):$/;"	c
 LatencyCollector	execution/collectors.py	/^class LatencyCollector(DataCollector):$/;"	c
 LeaveCopyDown	models/strategy/onpath.py	/^class LeaveCopyDown(Strategy):$/;"	c
 LeaveCopyEverywhere	models/strategy/onpath.py	/^class LeaveCopyEverywhere(Strategy):$/;"	c
@@ -108,11 +109,9 @@ ProbCache	models/strategy/onpath.py	/^class ProbCache(Strategy):$/;"	c
 REQUEST	models/service/compSpot.py	/^REQUEST = 0$/;"	v
 REQUEST	models/strategy/service.py	/^REQUEST = 0$/;"	v
 REQUEST	scenarios/workload.py	/^REQUEST = 0$/;"	v
-REQUEST	scenarios/workloadfoo.py	/^REQUEST = 0$/;"	v
 RESPONSE	models/service/compSpot.py	/^RESPONSE = 1$/;"	v
 RESPONSE	models/strategy/service.py	/^RESPONSE = 1$/;"	v
 RESPONSE	scenarios/workload.py	/^RESPONSE = 1$/;"	v
-RESPONSE	scenarios/workloadfoo.py	/^RESPONSE = 1$/;"	v
 RESULTS_READER	registry.py	/^RESULTS_READER = {}$/;"	v
 RESULTS_WRITER	registry.py	/^RESULTS_WRITER = {}$/;"	v
 RESULTS_WRITER	run.py	/^from icarus.registry import RESULTS_WRITER$/;"	i
@@ -135,8 +134,8 @@ Service	execution/network.py	/^class Service(object):$/;"	c
 Settings	run.py	/^from icarus.util import Settings, config_logging$/;"	i
 Settings	util.py	/^class Settings(object):$/;"	c
 ShardedCache	models/cache/systems.py	/^class ShardedCache(Cache):$/;"	c
+StaticTrace	models/strategy/service.py	/^class StaticTrace(Strategy):$/;"	c
 StationaryWorkload	scenarios/workload.py	/^class StationaryWorkload(object):$/;"	c
-StationaryWorkload	scenarios/workloadfoo.py	/^class StationaryWorkload(object):$/;"	c
 Strategy	models/strategy/base.py	/^class Strategy(object):$/;"	c
 Strategy	models/strategy/hashrouting.py	/^from .base import Strategy$/;"	i
 Strategy	models/strategy/offpath.py	/^from .base import Strategy$/;"	i
@@ -146,7 +145,6 @@ StrictestDeadlineFirst	models/strategy/service.py	/^class StrictestDeadlineFirst
 TASK_COMPLETE	models/service/compSpot.py	/^TASK_COMPLETE = 2$/;"	v
 TASK_COMPLETE	models/strategy/service.py	/^TASK_COMPLETE = 2$/;"	v
 TASK_COMPLETE	scenarios/workload.py	/^TASK_COMPLETE = 2$/;"	v
-TASK_COMPLETE	scenarios/workloadfoo.py	/^TASK_COMPLETE = 2$/;"	v
 TOPOLOGY_FACTORY	orchestration.py	/^                            CACHE_POLICY, WORKLOAD, DATA_COLLECTOR, STRATEGY$/;"	i
 TOPOLOGY_FACTORY	registry.py	/^TOPOLOGY_FACTORY = {}$/;"	v
 TOPOLOGY_RESOURCES_DIR	scenarios/topology.py	/^TOPOLOGY_RESOURCES_DIR = path.abspath(path.join(path.dirname(__file__),$/;"	v
@@ -209,7 +207,6 @@ TestWeighted	scenarios/test/test_contentplacement.py	/^class TestWeighted(unitte
 TestYCBS	scenarios/test/test_workload.py	/^class TestYCBS(unittest.TestCase):$/;"	c
 TestZipfFit	tools/tests/test_traces.py	/^class TestZipfFit(unittest.TestCase):$/;"	c
 TraceDrivenWorkload	scenarios/workload.py	/^class TraceDrivenWorkload(object):$/;"	c
-TraceDrivenWorkload	scenarios/workloadfoo.py	/^class TraceDrivenWorkload(object):$/;"	c
 Tree	execution/collectors.py	/^from icarus.util import Tree, inheritdoc$/;"	i
 Tree	results/plot.py	/^from icarus.util import Tree, step_cdf$/;"	i
 Tree	results/readwrite.py	/^from icarus.util import Tree$/;"	i
@@ -217,7 +214,6 @@ Tree	test/test_tree.py	/^from icarus.util import Tree$/;"	i
 Tree	util.py	/^class Tree(collections.defaultdict):$/;"	c
 TreeCache	models/cache/systems.py	/^class TreeCache(object):$/;"	c
 TruncatedZipfDist	scenarios/workload.py	/^from icarus.tools import TruncatedZipfDist$/;"	i
-TruncatedZipfDist	scenarios/workloadfoo.py	/^from icarus.tools import TruncatedZipfDist$/;"	i
 TruncatedZipfDist	tools/cacheperf.py	/^from icarus.tools import TruncatedZipfDist, DiscreteDist$/;"	i
 TruncatedZipfDist	tools/stats.py	/^class TruncatedZipfDist(DiscreteDist):$/;"	c
 TruncatedZipfDist	tools/tests/test_traces.py	/^from icarus.tools import TruncatedZipfDist$/;"	i
@@ -225,7 +221,6 @@ TruncatedZipfDist	tools/traces.py	/^from icarus.tools import TruncatedZipfDist$/
 WORKLOAD	orchestration.py	/^                            CACHE_POLICY, WORKLOAD, DATA_COLLECTOR, STRATEGY$/;"	i
 WORKLOAD	registry.py	/^WORKLOAD = {}$/;"	v
 YCSBWorkload	scenarios/workload.py	/^class YCSBWorkload(object):$/;"	c
-YCSBWorkload	scenarios/workloadfoo.py	/^class YCSBWorkload(object):$/;"	c
 _Node	models/cache/policies.py	/^    class _Node(object):$/;"	c	class:LinkedSet
 ___license___	__init__.py	/^___license___ = 'GNU GPLv2'$/;"	v
 __add__	results/readwrite.py	/^    def __add__(self, resultset):$/;"	m	class:ResultSet	file:
@@ -251,7 +246,6 @@ __all__	scenarios/compSpotplacement.py	/^__all__ = [$/;"	v
 __all__	scenarios/contentplacement.py	/^__all__ = ['uniform_content_placement', 'weighted_content_placement']$/;"	v
 __all__	scenarios/topology.py	/^__all__ = [$/;"	v
 __all__	scenarios/workload.py	/^__all__ = [$/;"	v
-__all__	scenarios/workloadfoo.py	/^__all__ = [$/;"	v
 __all__	tools/cacheperf.py	/^__all__ = [$/;"	v
 __all__	tools/stats.py	/^__all__ = [$/;"	v
 __all__	tools/traces.py	/^__all__ = [$/;"	v
@@ -274,9 +268,9 @@ __init__	execution/collectors.py	/^    def __init__(self, view, off_path_hits=Fa
 __init__	execution/collectors.py	/^    def __init__(self, view, req_size=150, content_size=1500):$/;"	m	class:LinkLoadCollector
 __init__	execution/network.py	/^    def __init__(self, model):$/;"	m	class:NetworkController
 __init__	execution/network.py	/^    def __init__(self, model):$/;"	m	class:NetworkView
-__init__	execution/network.py	/^    def __init__(self, service_time=None, deadline=None, alpha=None):$/;"	m	class:Service
+__init__	execution/network.py	/^    def __init__(self, service_time=None, deadline=None, alpha=None, u_min=0):$/;"	m	class:Service
 __init__	execution/network.py	/^    def __init__(self, time, receiver, service, node, flow_id, traffic_class, rtt_delay, status):$/;"	m	class:Event
-__init__	execution/network.py	/^    def __init__(self, topology, cache_policy, sched_policy, n_services, rates, alphas, rate_dist, seed=0, shortest_path=None):$/;"	m	class:NetworkModel
+__init__	execution/network.py	/^    def __init__(self, topology, cache_policy, sched_policy, n_services, rates, alphas, rate_dist, service_times=[], umins=[], monetaryFocus=False, seed=0, shortest_path=None):$/;"	m	class:NetworkModel
 __init__	models/cache/policies.py	/^        def __init__(self, val, up=None, down=None):$/;"	m	class:LinkedSet._Node
 __init__	models/cache/policies.py	/^    def __init__(self, iterable=[]):$/;"	m	class:LinkedSet
 __init__	models/cache/policies.py	/^    def __init__(self, maxlen, **kwargs):$/;"	m	class:LruCache
@@ -293,7 +287,7 @@ __init__	models/cache/systems.py	/^    def __init__(self, caches, **kwargs):$/;"
 __init__	models/cache/systems.py	/^    def __init__(self, caches, weights=None, **kwargs):$/;"	m	class:ArrayCache
 __init__	models/cache/systems.py	/^    def __init__(self, leaf_caches, root_cache, **kwargs):$/;"	m	class:TreeCache
 __init__	models/cache/systems.py	/^    def __init__(self, maxlen, policy='LRU', nodes=4, f_map=None,$/;"	m	class:ShardedCache
-__init__	models/service/compSpot.py	/^    def __init__(self, model, numOfCores, n_services, services, node, sched_policy = "EDF", dist=None):$/;"	m	class:ComputationalSpot
+__init__	models/service/compSpot.py	/^    def __init__(self, model, numOfCores, n_services, services, node, sched_policy = "EDF", dist=None, monetaryFocus=False):$/;"	m	class:ComputationalSpot
 __init__	models/service/compSpot.py	/^    def __init__(self, numOfCores):$/;"	m	class:CpuInfo
 __init__	models/service/compSpot.py	/^    def __init__(self, time, deadline, rtt_delay, node, service, service_time, flow_id, receiver, finishTime=None, traffic_class = None):$/;"	m	class:Task
 __init__	models/strategy/base.py	/^    def __init__(self, view, controller, **kwargs):$/;"	m	class:NoCache
@@ -323,17 +317,16 @@ __init__	models/strategy/service.py	/^    def __init__(self, view, controller, r
 __init__	models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=10, debug=False, p = 0.5, **kwargs):$/;"	m	class:Lru
 __init__	models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=5.0, debug=False, **kwargs):$/;"	m	class:DoubleAuction
 __init__	models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=5.0, debug=False, **kwargs):$/;"	m	class:DoubleAuctionTrace
+__init__	models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=5.0, debug=False, **kwargs):$/;"	m	class:Fifo
+__init__	models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=5.0, debug=False, **kwargs):$/;"	m	class:LFUTrace
 __init__	models/strategy/service.py	/^    def __init__(self, view, controller, replacement_interval=5.0, debug=False, **kwargs):$/;"	m	class:SelfTuningTrace
+__init__	models/strategy/service.py	/^    def __init__(self, view, controller, trace_file = '', n_measured_requests = 0, replacement_interval=5.0, debug=True, **kwargs):$/;"	m	class:StaticTrace
 __init__	orchestration.py	/^    def __init__(self, settings, summary_freq=4):$/;"	m	class:Orchestrator
 __init__	results/readwrite.py	/^    def __init__(self, attr=None):$/;"	m	class:ResultSet
 __init__	scenarios/workload.py	/^    def __init__(self, topology, n_contents, alpha, beta=0, rates=10, rate_dist=[0],$/;"	m	class:TraceDrivenWorkload
 __init__	scenarios/workload.py	/^    def __init__(self, topology, n_contents, alpha, beta=0, rates=[0], rate_dist=[0],$/;"	m	class:StationaryWorkload
 __init__	scenarios/workload.py	/^    def __init__(self, topology, reqs_file, contents_file, beta=0, **kwargs):$/;"	m	class:GlobetraffWorkload
 __init__	scenarios/workload.py	/^    def __init__(self, workload, n_contents, n_warmup, n_measured, alpha=0.99, seed=None, **kwargs):$/;"	m	class:YCSBWorkload
-__init__	scenarios/workloadfoo.py	/^    def __init__(self, topology, n_contents, alpha, beta=0, rate, rate_dist=[0],$/;"	m	class:TraceDrivenWorkload
-__init__	scenarios/workloadfoo.py	/^    def __init__(self, topology, n_contents, alpha, beta=0, rates=[0], rate_dist=[0],$/;"	m	class:StationaryWorkload
-__init__	scenarios/workloadfoo.py	/^    def __init__(self, topology, reqs_file, contents_file, beta=0, **kwargs):$/;"	m	class:GlobetraffWorkload
-__init__	scenarios/workloadfoo.py	/^    def __init__(self, workload, n_contents, n_warmup, n_measured, alpha=0.99, seed=None, **kwargs):$/;"	m	class:YCSBWorkload
 __init__	tools/stats.py	/^    def __init__(self, alpha=1.0, n=1000, seed=None):$/;"	m	class:TruncatedZipfDist
 __init__	tools/stats.py	/^    def __init__(self, pdf, seed=None):$/;"	m	class:DiscreteDist
 __init__	util.py	/^    def __init__(self):$/;"	m	class:Settings
@@ -345,10 +338,6 @@ __iter__	scenarios/workload.py	/^    def __iter__(self):$/;"	m	class:GlobetraffW
 __iter__	scenarios/workload.py	/^    def __iter__(self):$/;"	m	class:StationaryWorkload	file:
 __iter__	scenarios/workload.py	/^    def __iter__(self):$/;"	m	class:TraceDrivenWorkload	file:
 __iter__	scenarios/workload.py	/^    def __iter__(self):$/;"	m	class:YCSBWorkload	file:
-__iter__	scenarios/workloadfoo.py	/^    def __iter__(self):$/;"	m	class:GlobetraffWorkload	file:
-__iter__	scenarios/workloadfoo.py	/^    def __iter__(self):$/;"	m	class:StationaryWorkload	file:
-__iter__	scenarios/workloadfoo.py	/^    def __iter__(self):$/;"	m	class:TraceDrivenWorkload	file:
-__iter__	scenarios/workloadfoo.py	/^    def __iter__(self):$/;"	m	class:YCSBWorkload	file:
 __iter__	util.py	/^    def __iter__(self, root=[]):$/;"	m	class:Tree	file:
 __len__	models/cache/policies.py	/^    def __len__(self):$/;"	m	class:BeladyMinCache	file:
 __len__	models/cache/policies.py	/^    def __len__(self):$/;"	m	class:Cache	file:
@@ -390,9 +379,10 @@ absolute_import	__init__.py	/^from __future__ import absolute_import$/;"	i
 add	results/readwrite.py	/^    def add(self, parameters, results):$/;"	m	class:ResultSet
 add_event	execution/network.py	/^    def add_event(self, time, receiver, service, node, flow_id, deadline, rtt_delay, status):$/;"	m	class:NetworkController
 admit_self_tuning	models/service/compSpot.py	/^    def admit_self_tuning(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
+admit_static_provisioning	models/service/compSpot.py	/^    def admit_static_provisioning(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
 admit_task	models/service/compSpot.py	/^    def admit_task(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
 admit_task_EDF	models/service/compSpot.py	/^    def admit_task_EDF(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
-admit_task_FIFO	models/service/compSpot.py	/^    def admit_task_FIFO(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
+admit_task_FIFO	models/service/compSpot.py	/^    def admit_task_FIFO(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
 admit_task_auction	models/service/compSpot.py	/^    def admit_task_auction(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):$/;"	m	class:ComputationalSpot
 admit_task_auction_queuing	models/service/compSpot.py	/^    def admit_task_auction_queuing(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug, rtt_to_nextnode):$/;"	m	class:ComputationalSpot
 algorithms	scenarios/test/test_algorithms.py	/^import icarus.scenarios as algorithms$/;"	i
@@ -483,7 +473,7 @@ compute_clusters	scenarios/cacheplacement.py	/^from icarus.scenarios.algorithms 
 compute_new_medoid	scenarios/algorithms.py	/^    def compute_new_medoid(cluster, distances):$/;"	f	function:pam
 compute_p_median	scenarios/algorithms.py	/^def compute_p_median(distances, p, n_iter=20):$/;"	f
 compute_p_median	scenarios/cacheplacement.py	/^from icarus.scenarios.algorithms import compute_clusters, compute_p_median, deploy_clusters$/;"	i
-compute_prices	models/service/compSpot.py	/^    def compute_prices(self, s=1.0,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):$/;"	m	class:ComputationalSpot
+compute_prices	models/service/compSpot.py	/^    def compute_prices(self, time, s=1.0,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):$/;"	m	class:ComputationalSpot
 compute_utilities	models/service/compSpot.py	/^    def compute_utilities(self):$/;"	m	class:ComputationalSpot
 config_logging	run.py	/^from icarus.util import Settings, config_logging$/;"	i
 config_logging	util.py	/^def config_logging(log_level='INFO'):$/;"	f
@@ -504,7 +494,6 @@ copy	util.py	/^import copy$/;"	i
 count_running_service	models/service/compSpot.py	/^    def count_running_service(self, service):$/;"	m	class:CpuInfo
 count_running_service_type	models/service/compSpot.py	/^    def count_running_service_type(self, service, traffic_class):$/;"	m	class:CpuInfo
 csv	scenarios/workload.py	/^import csv$/;"	i
-csv	scenarios/workloadfoo.py	/^import csv$/;"	i
 cubrt	tools/cacheperf.py	/^    def cubrt(x):$/;"	f	function:laoutaris_characteristic_time
 current	util.py	/^    def current(self):$/;"	m	class:SequenceNumber
 dateutil	tools/traces.py	/^import dateutil$/;"	i
@@ -565,7 +554,8 @@ end_session	execution/collectors.py	/^    def end_session(self, success=True):$/
 end_session	execution/collectors.py	/^    def end_session(self, success=True, time=0, flow_id=0):$/;"	m	class:CollectorProxy
 end_session	execution/collectors.py	/^    def end_session(self, success=True, timestamp=0, flow_id=0):$/;"	m	class:DataCollector
 end_session	execution/network.py	/^    def end_session(self, success=True, timestamp=0, flow_id=0):$/;"	m	class:NetworkController
-estimateMaximumEffectiveL	models/service/compSpot.py	/^    def estimateMaximumEffectiveL(self,L,mu_s,totalCapacity):$/;"	m	class:ComputationalSpot
+estimateMaximumEffectiveL	models/service/compSpot.py	/^    def estimateMaximumEffectiveL(self, passingRates,exponentialTimeOfExecution,C_d,PrintFlag=False):$/;"	m	class:ComputationalSpot
+estimateMaximumEffectiveL2	models/service/compSpot.py	/^    def estimateMaximumEffectiveL2(self,L,mu_s,totalCapacity, ControlPrint=False):$/;"	m	class:ComputationalSpot
 eventQ	execution/network.py	/^    def eventQ(self):$/;"	m	class:NetworkView
 exec_experiment	execution/engine.py	/^def exec_experiment(topology, workload, netconf, strategy, cache_policy, collectors, warmup_strategy, sched_policy = {'name': 'EDF'}):$/;"	f
 exec_experiment	orchestration.py	/^from icarus.execution import exec_experiment$/;"	i
@@ -648,7 +638,6 @@ has_computationalSpot	execution/network.py	/^    def has_computationalSpot(self,
 has_service	execution/network.py	/^    def has_service(self, node, service):$/;"	m	class:NetworkView
 heapq	execution/network.py	/^import heapq $/;"	i
 heapq	scenarios/workload.py	/^import heapq $/;"	i
-heapq	scenarios/workloadfoo.py	/^import heapq $/;"	i
 heapq	util.py	/^import heapq$/;"	i
 icarus	execution/tests/test_collectors.py	/^import icarus.execution as collectors$/;"	i
 icarus	execution/tests/test_network.py	/^import icarus.execution.network as network$/;"	i
@@ -779,7 +768,6 @@ nx	scenarios/compSpotplacement.py	/^import networkx as nx$/;"	i
 nx	scenarios/test/test_algorithms.py	/^import networkx as nx$/;"	i
 nx	scenarios/topology.py	/^import networkx as nx$/;"	i
 nx	scenarios/workload.py	/^import networkx as nx$/;"	i
-nx	scenarios/workloadfoo.py	/^import networkx as nx$/;"	i
 nx	test/test_util.py	/^import networkx as nx$/;"	i
 nx	util.py	/^import networkx as nx$/;"	i
 on_path_topology	models/strategy/tests/test_strategy.py	/^    def on_path_topology(cls):$/;"	m	class:TestOnPath
@@ -857,7 +845,10 @@ process_event	models/strategy/service.py	/^    def process_event(self, time, rec
 process_event	models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, deadline, rtt_delay, status):$/;"	m	class:StrictestDeadlineFirst
 process_event	models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):$/;"	m	class:DoubleAuction
 process_event	models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):$/;"	m	class:DoubleAuctionTrace
+process_event	models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):$/;"	m	class:Fifo
+process_event	models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):$/;"	m	class:LFUTrace
 process_event	models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):$/;"	m	class:SelfTuningTrace
+process_event	models/strategy/service.py	/^    def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):$/;"	m	class:StaticTrace
 proportions_confidence_interval	tools/stats.py	/^def proportions_confidence_interval(data, confidence):$/;"	f
 purge	models/cache/policies.py	/^    def purge():$/;"	f	function:ttl_cache
 put	models/cache/policies.py	/^    def put(item, force_insert=False, *args, **kwargs):$/;"	f	function:insert_after_k_hits_cache
@@ -892,7 +883,6 @@ random	scenarios/cacheplacement.py	/^import random$/;"	i
 random	scenarios/contentplacement.py	/^import random$/;"	i
 random	scenarios/topology.py	/^import random$/;"	i
 random	scenarios/workload.py	/^import random$/;"	i
-random	scenarios/workloadfoo.py	/^import random$/;"	i
 random	tools/stats.py	/^import random$/;"	i
 random	tools/tests/test_traces.py	/^import random$/;"	i
 random_cache_placement	scenarios/cacheplacement.py	/^def random_cache_placement(topology, cache_budget, n_cache_nodes,$/;"	f
@@ -927,7 +917,6 @@ register_topology_factory	registry.py	/^register_topology_factory = register_dec
 register_topology_factory	scenarios/topology.py	/^from icarus.registry import register_topology_factory$/;"	i
 register_workload	registry.py	/^register_workload = register_decorator(WORKLOAD)$/;"	v
 register_workload	scenarios/workload.py	/^from icarus.registry import register_workload$/;"	i
-register_workload	scenarios/workloadfoo.py	/^from icarus.registry import register_workload$/;"	i
 reject_service	execution/collectors.py	/^    def reject_service(self, time, service, is_cloud, traffic_class, node, price):$/;"	m	class:CollectorProxy
 reject_service	execution/collectors.py	/^    def reject_service(self, time, service, is_cloud, traffic_class, node, price):$/;"	m	class:DataCollector
 reject_service	execution/collectors.py	/^    def reject_service(self, time, service, is_cloud, traffic_class, node, price):$/;"	m	class:LatencyCollector
@@ -952,7 +941,8 @@ remove	models/cache/systems.py	/^    def remove(self, k):$/;"	m	class:TreeCache
 remove_content	execution/network.py	/^    def remove_content(self, node):$/;"	m	class:NetworkController
 remove_link	execution/network.py	/^    def remove_link(self, u, v, recompute_paths=True):$/;"	m	class:NetworkController
 remove_node	execution/network.py	/^    def remove_node(self, v, recompute_paths=True):$/;"	m	class:NetworkController
-replace_services	models/strategy/service.py	/^    def replace_services(self):$/;"	m	class:SelfTuningTrace
+replace_services	models/strategy/service.py	/^    def replace_services(self, debug = True):$/;"	m	class:LFUTrace
+replace_services	models/strategy/service.py	/^    def replace_services(self, debug = True):$/;"	m	class:SelfTuningTrace
 replace_services	models/strategy/service.py	/^    def replace_services(self, k, time):$/;"	m	class:Hybrid
 replace_services	models/strategy/service.py	/^    def replace_services(self, k, time):$/;"	m	class:MostFrequentlyUsed
 replace_services	models/strategy/service.py	/^    def replace_services(self, k, time):$/;"	m	class:StrictestDeadlineFirst
@@ -1030,13 +1020,17 @@ setUpClass	test/test_util.py	/^    def setUpClass(cls):$/;"	m	class:TestUtil
 setUpClass	tools/tests/test_cacheperf.py	/^    def setUpClass(cls):$/;"	m	class:TestCheApproximation
 setUpClass	tools/tests/test_cacheperf.py	/^    def setUpClass(cls):$/;"	m	class:TestNumericCacheHitRatio
 setUpClass	tools/tests/test_traces.py	/^    def setUpClass(cls):$/;"	m	class:TestZipfFit
+set_node_traffic_rates	execution/collectors.py	/^    def set_node_traffic_rates(self, node, time, rates, eff_rates):$/;"	m	class:CollectorProxy
+set_node_traffic_rates	execution/collectors.py	/^    def set_node_traffic_rates(self, node, time, rates, eff_rates):$/;"	m	class:DataCollector
+set_node_traffic_rates	execution/collectors.py	/^    def set_node_traffic_rates(self, node, time, rates, eff_rates):$/;"	m	class:LatencyCollector
+set_node_traffic_rates	execution/network.py	/^    def set_node_traffic_rates(self, node, time, rates, eff_rates):$/;"	m	class:NetworkController
 set_node_util	execution/collectors.py	/^    def set_node_util(self, node, utilities):$/;"	m	class:DataCollector
 set_node_util	execution/collectors.py	/^    def set_node_util(self, node, utilities, time):$/;"	m	class:CollectorProxy
 set_node_util	execution/collectors.py	/^    def set_node_util(self, node, utilities, time):$/;"	m	class:LatencyCollector
 set_node_util	execution/network.py	/^    def set_node_util(self, node, utilities, time=0.0): $/;"	m	class:NetworkController
-set_vm_prices	execution/collectors.py	/^    def set_vm_prices(self, node, vm_prices):$/;"	m	class:DataCollector
-set_vm_prices	execution/collectors.py	/^    def set_vm_prices(self, node, vm_prices, time):$/;"	m	class:CollectorProxy
 set_vm_prices	execution/collectors.py	/^    def set_vm_prices(self, node, vm_prices, time):$/;"	m	class:LatencyCollector
+set_vm_prices	execution/collectors.py	/^    def set_vm_prices(self, node, vm_prices, time=0):$/;"	m	class:CollectorProxy
+set_vm_prices	execution/collectors.py	/^    def set_vm_prices(self, node, vm_prices, time=0):$/;"	m	class:DataCollector
 set_vm_prices	execution/network.py	/^    def set_vm_prices(self, node, vm_prices, time=0.0): $/;"	m	class:NetworkController
 setval	util.py	/^    def setval(self, path, val):$/;"	m	class:Tree
 shortest_path	execution/network.py	/^    def shortest_path(self, s, t):$/;"	m	class:NetworkView

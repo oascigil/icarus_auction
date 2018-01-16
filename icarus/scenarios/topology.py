@@ -251,10 +251,13 @@ def topology_path(n, delay=EXTERNAL_LINK_DELAY/1000, n_classes=10, min_delay=INT
     receivers = ['rec_%d' % i for i in range(n_receivers)]
     root = [v for v in topology.nodes_iter() if topology.node[v]['depth'] == 0][0]
     
+    #min_delay = max_delay #this is for number of classes=2; one class has d=0 and the other has d=max
     delays = [None]*n_classes
     for i in range(n_classes):
         #delays[i] = random.uniform(min_delay, max_delay)
         delays[i] = max_delay - i*min_delay
+        if delays[i] < 0.0:
+            delays[i] = 0.0
         topology.graph['min_delay'][i] = delays[i]
         topology.graph['max_delay'][i] = delays[i] + (n)*delay
     

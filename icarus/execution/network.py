@@ -64,7 +64,7 @@ class Event(object):
 class Service(object):
     """Implementation of a service object"""
 
-    def __init__(self, service_time=None, deadline=None, alpha=None):
+    def __init__(self, service_time=None, deadline=None, alpha=None, u_min=0):
         """Constructor
         Parameters
         ----------
@@ -75,6 +75,8 @@ class Service(object):
         self.service_time = service_time
         self.deadline = deadline
         self.alpha = alpha
+        self.u_min = u_min
+        print "Service time: " + repr(service_time)
 
 def symmetrify_paths(shortest_paths):
     """Make paths symmetric
@@ -487,7 +489,7 @@ class NetworkModel(object):
     calls to the network controller.
     """
 
-    def __init__(self, topology, cache_policy, sched_policy, n_services, rates, alphas, rate_dist, seed=0, shortest_path=None):
+    def __init__(self, topology, cache_policy, sched_policy, n_services, rates, alphas, rate_dist, service_times=[], umins=[], monetaryFocus=False, seed=0, shortest_path=None):
         """Constructor
 
         Parameters
@@ -577,8 +579,8 @@ class NetworkModel(object):
         self.n_services = n_services
         internal_link_delay = 0.001 # This is the delay from receiver to router
         
-        service_time_min = 10.0 # 0.51 # used to be 0.001
-        service_time_max = 10.0 #0.51 # used to be 0.1 
+        service_time_min = 60 # 0.51 # used to be 0.001
+        service_time_max = 60 #0.51 # used to be 0.1 
         #delay_min = 0.005
         delay_min = 0.001*2 + 0.020 # Remove*10
         delay_max = 0.202  #NOTE: make sure this is not too large; otherwise all requests go to cloud and are satisfied! 
@@ -587,34 +589,35 @@ class NetworkModel(object):
         #aFile.write("# ServiceID\tserviceTime\tserviceDeadline\tDifference\n")
 
         service_indx = 0
-        deadlines = []
-        service_times = []
+        #service_times = []
         random.seed(seed)
 
-        for service in range(0, n_services):
-            service_time = random.uniform(service_time_min, service_time_max)
-            #service_time = 2*random.uniform(service_time_min, service_time_max)
-            deadline = service_time + random.uniform(delay_min, delay_max) + 2*internal_link_delay
-            #deadline = service_time + 1.5*(random.uniform(delay_min, delay_max) + 2*internal_link_delay)
-            deadlines.append(deadline)
-            service_times.append(service_time)
+        if len(service_times) == 0:
+            print "Generating random service engagement times"
+            for service in range(0, n_services):
+                service_time = random.uniform(service_time_min, service_time_max)
+                #service_time = 2*random.uniform(service_time_min, service_time_max)
+                service_times.append(service_time)
 
         #deadlines = sorted(deadlines) #Correlate deadline and popularity XXX
         #deadlines.reverse()
         for service in range(0, n_services):
             service_time = service_times[service_indx]
-            deadline = deadlines[service_indx]
+            deadline = service_time + random.uniform(delay_min, delay_max) + 2*internal_link_delay
             diff = deadline - service_time
 
             #s = str(service_indx) + "\t" + str(service_time) + "\t" + str(deadline) + "\t" + str(diff) + "\n"
             #aFile.write(s)
-            s = Service(service_time, deadline, alphas[service_indx])
+            if len(umins) > 0:
+                s = Service(service_time, deadline, alphas[service_indx], umins[service_indx])
+            else:
+                s = Service(service_time, deadline, alphas[service_indx], 0)
             service_indx += 1
             self.services.append(s)
         #aFile.close()
         #""" #END OF Generating Services
 
-        self.compSpot = {node: ComputationalSpot(self, comp_size[node], service_size[node], self.services, node, sched_policy, None) 
+        self.compSpot = {node: ComputationalSpot(self, comp_size[node], service_size[node], self.services, node, sched_policy, None, monetaryFocus) 
                             for node in comp_size}
  
         # Run the offline price computation
@@ -637,18 +640,18 @@ class NetworkModel(object):
                         cs.service_class_rate = [[rate_dist[x]*(1.0*rates)/cs.service_population for x in range(cs.num_classes)] for y in range(cs.service_population)]
                     else:
                         cs.service_class_rate = [[rate_dist[x]*rates[y] for x in range(cs.num_classes)] for y in range(cs.service_population)]
-                cs.compute_prices()
+                cs.compute_prices(0.0)
                 p = topology.graph['parent'][v]
                 if p != None:
                     cs_parent = self.compSpot[p]
-                    print 'Admitted service_class_rate: ' + repr(cs.admitted_service_class_rate)
-                    print 'Input service_class_rate: ' + repr(cs.service_class_rate)
+                    #print 'Admitted service_class_rate: ' + repr(cs.admitted_service_class_rate)
+                    #print 'Input service_class_rate: ' + repr(cs.service_class_rate)
                     diff = numpy.subtract(cs.service_class_rate, cs.admitted_service_class_rate)
                     diff = diff.tolist()
-                    print 'diff: ' + repr(diff)
+                    #print 'diff: ' + repr(diff)
                     cs_parent.service_class_rate = numpy.add(cs_parent.service_class_rate, diff)
                     cs_parent.service_class_rate = cs_parent.service_class_rate.tolist()
-                    print 'Parent service_class_rate: ' + repr(cs_parent.service_class_rate)
+                    #print 'Parent service_class_rate: ' + repr(cs_parent.service_class_rate)
             h -= 1
 
         print "Done computing prices"
@@ -891,6 +894,15 @@ class NetworkController(object):
         """
         self.collector.set_vm_prices(node, vm_prices, time)
     
+    def set_node_traffic_rates(self, node, time, rates, eff_rates):
+        """ Set the rates and effective rates of Cloudlets
+            node      : node id
+            rates     : list, the input traffic rate per-service
+            eff_rates : list, the effective input traffic rate per-service
+        """
+
+        self.collector.set_node_traffic_rates(node, time, rates, eff_rates)
+
     def set_node_util(self, node, utilities, time=0.0): 
         """ Set the utility of each node
         """

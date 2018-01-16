@@ -170,7 +170,7 @@ class ComputationalSpot(object):
     Queue. The service time of the Queue is extracted from the service properties. 
     """
 
-    def __init__(self, model, numOfCores, n_services, services, node, sched_policy = "EDF", dist=None):
+    def __init__(self, model, numOfCores, n_services, services, node, sched_policy = "EDF", dist=None, monetaryFocus=False):
         """Constructor
 
         Parameters
@@ -190,6 +190,11 @@ class ComputationalSpot(object):
         self.service_population = len(services)
         self.model = model
         self.num_classes = self.model.topology.graph['n_classes']
+        self.monetaryFocus = monetaryFocus
+        if self.monetaryFocus:
+            print "Monetary Focus set to True"
+        else:
+            print "Monetary Focus set to False"
 
         print ("Number of VMs @node: " + repr(node) + " " + repr(n_services))
         print ("Number of cores @node: " + repr(node) + " " + repr(numOfCores))
@@ -210,6 +215,10 @@ class ComputationalSpot(object):
         
         # Task queue of the comp. spot
         self.taskQueue = []
+
+        # Rate and effective rate at the selected price (time-series)
+        self.rate_times = {}
+        self.eff_rate_times = {}
         
         # num. of instances of each service in the memory
         self.numberOfInstances = [[0 for x in range(self.num_classes)] for y in range(self.service_population)]
@@ -239,10 +248,8 @@ class ComputationalSpot(object):
         self.service_class_rate = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]
         self.service_class_count = [[0 for x in range(self.num_classes)] for y in range(self.service_population)]
         self.utilities = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)] 
-        print "Computing utilities"
         self.compute_utilities() # compute the utilities of each service and class
         print ("Utility @ node: " + repr(self.node) + ": " + repr(self.utilities))
-        print "Done Computing utilities"
         # Outputs from the get_prices() call:
         self.admitted_service_rate = [0.0]*self.service_population
         self.admitted_service_class_rate = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]
@@ -418,7 +425,7 @@ class ComputationalSpot(object):
             finishTime = time + serviceTime
             self.cpuInfo.assign_task_to_core(core_indx, finishTime, service)
             controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
-            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price*serviceTime)
             #print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + "Traffic class: " + repr(traffic_class) + "ACCEPTED"
             return [True, SUCCESS]
     
@@ -450,7 +457,7 @@ class ComputationalSpot(object):
             finishTime = time + serviceTime
             self.cpuInfo.assign_task_to_core(core_indx, finishTime, service, traffic_class)
             controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
-            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price*serviceTime)
             return [True, SUCCESS]
     
     def admit_static_provisioning(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):
@@ -480,7 +487,7 @@ class ComputationalSpot(object):
             finishTime = time + serviceTime
             self.cpuInfo.assign_task_to_core(core_indx, finishTime, service, traffic_class)
             controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
-            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
+            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price*serviceTime)
             return [True, SUCCESS]
 
     def compute_utilities(self):
@@ -500,11 +507,13 @@ class ComputationalSpot(object):
         
         for s in range(self.service_population):
             for c in range(self.num_classes):
-                class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*u_max
+                #class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*u_max
+                
+                class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
 
                 self.utilities[s][c] = class_u_min + (u_max - class_u_min) * pow((class_max_delay[c] - (self.delay_to_cs + self.model.topology.graph['min_delay'][c]))/class_max_delay[c], 1/self.services[s].alpha) 
 
-    def compute_prices(self, s=1.0,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):
+    def compute_prices(self, time, s=1.0,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):
         #U,L,M,X,P,Y     = returnAppSPsInfoForThisMarket(incpID,options)
         Y               = [1.0] * self.service_population
         M               = [1.0/x.service_time for x in self.services]
@@ -525,7 +534,8 @@ class ComputationalSpot(object):
 
         gainPerPrice  = {}
         utilisationPerPrice  = {}
-        monetaryFocusMode  = True # True by default
+        ratePerPrice  = {}
+        effRatePerPrice = {}
         while True:#iteration
             if ControlPrint:
                 print '------------------------------'
@@ -534,7 +544,9 @@ class ComputationalSpot(object):
             for appSPID in range(self.service_population):
                 X[appSPID],x = self.stage1AppSPCompactRequestedTraffic(P,U[appSPID],L[appSPID],M[appSPID])
             #if market has negative profit break
-            flagMonetaryLosses,utilisation,monetaryGain  = self.incpMonetaryLoss(X,M,P,phi,self.n_services)
+            flagMonetaryLosses,utilisation,monetaryGain,rates,effective_rates = self.incpMonetaryLoss(X,M,P,phi,self.n_services)
+            ratePerPrice[P] = rates
+            effRatePerPrice[P] = effective_rates
             if flagMonetaryLosses:
                 break
             gainPerPrice[P]        = monetaryGain
@@ -548,7 +560,7 @@ class ComputationalSpot(object):
         priceToAssign       = 100.0
         listOfPrices = sorted(list(gainPerPrice.keys()),reverse=True)
         for price in listOfPrices:
-            if monetaryFocusMode:
+            if self.monetaryFocus:
                 candidateObjectiveValue  =  gainPerPrice[price]
             else:
                 candidateObjectiveValue  =  round(utilisationPerPrice[price],4)
@@ -566,9 +578,11 @@ class ComputationalSpot(object):
                 vmPrices.append(priceToAssign)#vmPrices.append(0.0)
             else:
                 break
-        self.vm_prices = vmPrices #[72.5, 72.5, 72.5, 72.5, 65.5, 65.5, 65.5, 58.75, 58.75, 52.5]#vmPrices
-        #self.vm_prices = [87.0 for x in range(len(vmPrices))]
+        self.rate_times[time] = ratePerPrice[priceToAssign]
+        self.eff_rate_times[time] = effRatePerPrice[priceToAssign]
+        self.vm_prices = vmPrices 
         print ("VM prices @node: " +  repr(self.node) + ": " + repr(self.vm_prices))
+        
         #update arrival rates for the next INCP
         for appSPID in range(self.service_population):
             X[appSPID],x = self.stage1AppSPCompactRequestedTraffic(P,U[appSPID],L[appSPID],M[appSPID])
@@ -600,7 +614,7 @@ class ComputationalSpot(object):
         for element in x:
             Xsum  += element.value
         if ControlPrint:
-            print '\tAppSP gain: ',result,', ',x.value[0],', ',x.value[1]
+            print '\tAppSP gain: ',result,', ',x.value[0],', ',x.value[1], ', ', x.value[9]
             #print '\t\tlamda_1: ',r_1.dual_value
             print '\t\tsum of Xs: ',Xsum
         return Xsum,x.value
@@ -615,19 +629,39 @@ class ComputationalSpot(object):
         result = lp1.solve()
         return result,x.value
     #effective lambda-------------------------------------
-    def estimateMaximumEffectiveL(self,L,mu_s,totalCapacity):
+    def estimateMaximumEffectiveL2(self,L,mu_s,totalCapacity, ControlPrint=False):
+        #print "L = " + repr(L)
+        #print "mu_s = " + repr(mu_s)
         rho  = float(L)/float(mu_s)
         totalCapacity  = int(totalCapacity)
         P_s,P_0  = self.P_sEstimation(totalCapacity,totalCapacity,rho)
-        print ("Lambda = " + repr(L))
+        if ControlPrint:
+            print ("Lambda = " + repr(L))
         effectiveLambda  = L*(1.0-P_s)
-        print ("Effective Lambda = " + repr(effectiveLambda))
+        if ControlPrint:
+            print ("Effective Lambda = " + repr(effectiveLambda))
         return effectiveLambda
+
+    def estimateMaximumEffectiveL(self, passingRates,exponentialTimeOfExecution,C_d,PrintFlag=False):
+        #estimate rho
+        rho    = passingRates/exponentialTimeOfExecution
+        #Estimate P_d(n=0)
+        P_0DS  = []
+        for index in xrange(C_d+1):
+            element = math.pow(rho,index)/math.factorial(index)
+            P_0DS.append(element)
+        P_Cd  = element/sum(P_0DS)
+        #lambda effective
+        lambdaEffective  = passingRates*(1.0-P_Cd)
+        return lambdaEffective
+
     def P_sEstimation(self,s,totalCapacity,rho):
         #estimate P_0----------------------
         sumOfP_0Denominator  = 0.0
+        #print "Rho is " + repr(rho)
         for index in xrange(totalCapacity+1):
             numerator    = float(math.pow(rho,index))
+            #numerator    = rho**index
             denominator  = self.fact(index)
             sumOfP_0Denominator +=(numerator/denominator)
         P_0  = 1.0/sumOfP_0Denominator
@@ -658,17 +692,22 @@ class ComputationalSpot(object):
         for x in range(1, n +1):
             f *= x
         return float(f)
-    #admitted---------------------------------------------
+    
     def incpMonetaryLoss(self,X,M,P,phi,vmsCapacity,ControlPrint=False):
         x      = []
         objective  = 0.0
         y  = 0.0
         price  = 0.0
+        rho_thres = 0.95 #0.9999999999999
+        effective_rates = [0.0] * self.service_population
+        rates = [0.0] * self.service_population
         for appSPID in range(self.service_population):
             m  = 1.0/M[appSPID]
             p  = P-phi
             price  = P
             x  = self.estimateMaximumEffectiveL(X[appSPID],M[appSPID],vmsCapacity)
+            rates[appSPID] = X[appSPID]
+            effective_rates[appSPID] = x
             if ControlPrint:
                 print '-------------'
                 print '\tX ',X[appSPID],', M: ',M[appSPID]
@@ -683,11 +722,14 @@ class ComputationalSpot(object):
             print '\tadmitted traffic per service: ',X
             print '\taverage number of occupied VMs: ',y
         if objective<0 and math.fabs(objective)>0.001:
-            return True,y/vmsCapacity,objective
+            return True,y/vmsCapacity,objective, rates, effective_rates
+        elif y >= vmsCapacity*rho_thres:
+            return True,y/vmsCapacity,objective, rates, effective_rates
         else:
-            return False,y/vmsCapacity,objective
+            return False,y/vmsCapacity,objective, rates, effective_rates
     #other functions--------------------------------------
-    def admit_task_FIFO(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):
+    #def admit_task_FIFO(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):
+    def admit_task_FIFO(self, service, time, flow_id, traffic_class, receiver, rtt_delay, controller, debug):
         """
         Parameters
         ----------
@@ -699,47 +741,22 @@ class ComputationalSpot(object):
         comp_time : is when the task is going to be finished (after queuing + execution)
         vm_index : index of the VM that will execute the task
         """
-        
+        # Onur modified this method for auction paper
+        self.service_class_count[service][traffic_class] += 1
         serviceTime = self.services[service].service_time
-        if self.is_cloud:
-            controller.add_event(time+serviceTime, receiver, service, self.node, flow_id, deadline, rtt_delay, TASK_COMPLETE)
-            controller.execute_service(time, flow_id, service, self.node, time, self.is_cloud)
-            if debug:
-                print ("CLOUD: Accepting TASK")
-            return [True, CLOUD]
-        
-        if self.numberOfInstances[service] == 0:
-            return [False, NO_INSTANCES]
-        
-        aTask = Task(time, deadline, rtt_delay, self.node, service, serviceTime, flow_id, receiver)
-        self.taskQueue.append(aTask)
         self.cpuInfo.update_core_status(time) #need to call before simulate
-        self.simulate_execution(aTask, time, debug)
-        for task in self.taskQueue:
-            if debug:
-                print("After simulate:")
-                task.print_task()
-            if (task.expiry - task.rtt_delay) < task.finishTime:
-                self.missed_requests[service] += 1
-                if debug:
-                    print("Refusing TASK: Congestion")
-                self.taskQueue.remove(aTask)
-                return [False, CONGESTION]
-
-        # New task can be admitted, add to service Queue
-        self.running_requests[service] += 1
-        # Run the next task (if there is any)
-        newTask = self.schedule(time) 
-        if newTask is not None:
-            controller.add_event(newTask.finishTime, newTask.receiver, newTask.service, self.node, newTask.flow_id, newTask.expiry, newTask.rtt_delay, TASK_COMPLETE) 
-            controller.execute_service(time, newTask.flow_id, newTask.service, self.node, time, self.is_cloud)
-        
-        if self.numberOfInstances[service] == 0:
-            print "Error: this should not happen in admit_task_EDF()"
-       
-        if debug:
-            print ("Accepting Task")
-        return [True, SUCCESS]
+        core_indx, num_free_cores = self.cpuInfo.get_available_core(time)
+        if core_indx == None:
+            #print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + " Traffic class: " + repr(traffic_class) + " REJECTED CONG"
+            controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, 0.0)
+            return [False, CONGESTION]
+        else:
+            finishTime = time + serviceTime
+            self.cpuInfo.assign_task_to_core(core_indx, finishTime, service)
+            controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
+            controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, 0.0)
+            #print "Time: " + repr(time) + " core indx: " + repr(core_indx) + " num_free_cores: " + repr(num_free_cores) + " Idle time: " + repr(self.cpuInfo.idleTime) + "Traffic class: " + repr(traffic_class) + "ACCEPTED"
+            return [True, SUCCESS]
 
     def admit_task_EDF(self, service, time, flow_id, deadline, receiver, rtt_delay, controller, debug):
         """

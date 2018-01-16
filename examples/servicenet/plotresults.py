@@ -592,28 +592,76 @@ def print_zipf_experiment(lst):
                 f.write(s)
             f.close()
 
-def print_vm_results_n_services_one_node_k_classes(lst):
+def print_engagement_time_results(lst):
+    """
+    Print results for 2 services with varying engagement times. Second service is much more sensitive to changes in QoS compared to the first one.
+    """
+    
+    strategies = ['DOUBLE_AUCTION']
+    #service_times = [[120.0, 120.0], [135.0, 105.0], [150.0, 90.0], [165.0, 75.0], [180.0, 60.0], [105.0, 135.0], [90.0, 150.0], [75.0, 165.0], [60.0, 180.0]]
+    service_times = [[120.0, 120.0], [150.0, 90.0], [180.0, 60.0], [210.0, 30.0], [90.0, 150.0], [60.0, 180.0], [30.0, 210.0]]
+    n_services = 2
+
+    for strategy in ['DOUBLE_AUCTION']:
+        filename = 'engagement_results_' + str(strategy) 
+        f = open(filename, 'w')
+        f.write('# Engagement time results for two services\n')
+        f.write('# Service 0 has u_min 90 (less demanding) and Service 1 has u_min 0\n')
+        s = "EngagementTimes"
+        s += "\tvm_prices"
+        s += "\tidle_times" 
+        for serv in range(n_services):
+            s += "\tqos_service" + str(serv)
+            s += "\trevenue" + str(serv)
+            s += "\tsat_rate" + str(serv)
+        s += "\n"
+        f.write(s)
+        qos_service = None
+        service_revenue = None
+        vm_prices = None
+        sat_rate = None 
+        idle_times = None
+        for service_time in service_times:
+            s = str(service_time[0]) + "-" + str(service_time[1])
+            service_prices = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'PRICE_TIMES')
+            serv_utils = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'IDLE_TIMES_AVG')
+            s += "\t"  + str(service_prices[0.0][serv]) 
+            s += "\t" + str(serv_utils)
+            for serv in range(n_services):
+                qos_service = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'QoS_SERVICE')
+                service_revenue = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'SERVICE_REVENUE')
+                sat_rate = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'SERVICE_SAT_RATE')
+            
+                s += "\t" + str(qos_service[serv]) + "\t" + str(service_revenue[serv]) + "\t" + str(sat_rate[serv]) 
+            s += '\n'
+            f.write(s)
+        f.close()
+            
+    
+
+def print_vm_results(lst):
     """
     Print results for varying number of VMs for 1 node 2 services 10 classes
     """
     strategies = ['DOUBLE_AUCTION'] 
-    alpha = 0.75
-    num_of_vms = range(1, 11)
+    num_of_vms = [1, 5, 10, 20, 30, 40, 50, 60]
     num_classes = 10
-    num_services = 2
+    num_services = 1
     
     for strategy in strategies:
-        filename = 'qos_' + str(strategy) + '_services'
+        filename = 'vm_results_' + str(strategy) 
         f = open(filename, 'w')
         f.write('# QoS for different number of VMs\n')
         f.write('#\n')
-        s = '# num_of_vms   '
-        for serv in range(num_services):
-            s += 'qos_service:' + str(serv) + '   '
-            s += 'revenue:' + str(serv) + '   '
-            s += 'vm_prices' + str(serv) + '   '
-            s += 'sat_rate' + str(serv) + '    '
-            s += 'idle_times' + str(serv) + '    '
+        s = "num_of_vms"
+        #for serv in range(num_services):
+        s += "\tqos_service"
+        s += "\trevenue"
+        s += "\tvm_prices"
+        s += "\tsat_rate"
+        s += "\tidle_times"
+        s += "\tnodeRate"
+        s += "\tnodeEffRate\n"
         f.write(s)
         qos_service = None
         service_revenue = None
@@ -622,18 +670,44 @@ def print_vm_results_n_services_one_node_k_classes(lst):
         idle_times = None
         for vms in num_of_vms:
             qos_service = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'QoS_SERVICE')
+            qos_service = list(qos_service)
             service_revenue = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'SERVICE_REVENUE')
-            vm_prices = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_VM_PRICES')
-            #idle_times = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_UTILITIES')
+            service_revenue = list(service_revenue)
+            service_prices = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PRICE_TIMES_AVG')
             sat_rate = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'SERVICE_SAT_RATE')
-            idle_times = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'IDLE_TIMES')
+            sat_rate = list(sat_rate)
+            serv_utils = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'IDLE_TIMES_AVG')
+            node_rates = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_RATE_TIMES')
+            node_eff_rates = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_EFF_RATE_TIMES')
+            node_rates = dict(node_rates)
+            node_eff_rates = dict(node_eff_rates)
 
+            node_rates_at_time0 = node_rates[0.0]
+            for node_rate_arr in node_rates_at_time0:
+                n = node_rate_arr[0] #node
+                r = node_rate_arr[1] #rate
+                if n == 0:
+                    node_0_service_0_rate = r[0]
+                    break
+            node_eff_rates_at_time0 = node_eff_rates[0.0]
+            for node_rate_arr in node_eff_rates_at_time0:
+                n = node_rate_arr[0] #node
+                r = node_rate_arr[1] #rate
+                if n == 0:
+                    node_0_service_0_eff_rate = r[0]
+                    break
+                
             s = str(vms)
-            for serv in range(num_services):
-                s += "\t" + str(qos_service[serv]) + "\t" + str(service_revenue[serv]) + "\t" + str(vm_prices[0][0]) + "\t" + str(sat_rate[serv]) +  "\t" + str(idle_times)
+            s += "\t" + str(qos_service[0]) 
+            s += "\t" + str(service_revenue[0]) 
+            s += "\t" + str(service_prices) 
+            s += "\t" + str(sat_rate[0]) 
+            s +=  "\t" + str(serv_utils)
+            s += "\t" + str(node_0_service_0_rate)
+            s += "\t" + str(node_0_service_0_eff_rate)
             s += '\n'
             f.write(s)
-    f.close()
+        f.close()
 
 def print_trace_results(lst):
     """
@@ -643,9 +717,8 @@ def print_trace_results(lst):
     num_of_nodes = 3
 
     periods = [60]
-    strategies = ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']
-    strategies = ['STATIC_TRACE']
-    
+    #strategies = ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']
+    strategies = ['SELF_TUNING_TRACE']
     for strategy in strategies:
         filename = "trace_performance_" + str(strategy) + ".txt"
         f = open(filename, 'w')
@@ -688,54 +761,101 @@ def print_trace_results(lst):
             f.write(s)
         f.close()
 
-def print_vm_results_one_service_one_node_k_classes(lst):
+#def print_vm_results_one_service_one_node_k_classes(lst):
+def print_rate_dist_results(lst):
     """
     Print results for varying number of VMs for 1 node 1 service 10 classes
     """
 
-    strategies = ['DOUBLE_AUCTION'] 
+    strategies = ['DOUBLE_AUCTION', 'FIFO'] 
     alpha = 0.75
-    num_of_vms = range(1, 11)
+    num_of_vms = 20
     num_classes = 10
+    num_services = 1
+    #rate_dists = [[0.33, 0.67], [0.5, 0.5], [0.67, 0.33]]
+    #rate_dists = [[0.01, 0.99], [0.5, 0.5], [0.99, 0.01]]
+    rate_dists = [[0.30, 0.25, 0.10, 0.065, 0.058, 0.053, 0.05, 0.045, 0.04, 0.039], [0.039, 0.04, 0.045, 0.05, 0.053, 0.058, 0.065, 0.1, 0.25, 0.3], [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]]
     
     for strategy in strategies:
-        filename = 'qos_' + str(strategy) + '_services'
-        f = open(filename, 'w')
-        f.write('# QoS for different number of VMs\n')
-        f.write('#\n')
-        f.write('# num_of_vms    qos_service    service_revenue   vm_prices sat_rate idle_times\n')
-        for vms in num_of_vms:
-            qos_service = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'QoS_SERVICE')
-            service_revenue = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'SERVICE_REVENUE')
-            vm_prices = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_VM_PRICES')
-            idle_times = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_UTILITIES')
-            sat_rate = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'SERVICE_SAT_RATE')
-            idle_times = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'IDLE_TIMES')
+        for rate_dist in rate_dists:
+            suffix = '' 
+            if rate_dist[0] > rate_dist[1]:
+                suffix = 'low_util_popular'
+            elif rate_dist[0] < rate_dist[1]:
+                suffix = 'high_util_popular'
+            else:
+                suffix = 'equal'
 
-            s = str(vms) + "\t" + str(qos_service[0]) + "\t" + str(service_revenue[0]) + "\t" + str(vm_prices[0][0]) + "\t" + str(sat_rate[0]) +  "\t" + str(idle_times) + "\n"
+            filename = 'qos_' + str(strategy) + '_classes_' + suffix
+            f = open(filename, 'w')
+            f.write('# ' + suffix + '\n')
+            f.write('#\n')
+            s = "Class\tQoS\tRevenue\tSatisfaction\tUtility\tPrice\n"
+            #for c in range(num_classes):
+            #    s += '  qos_class_' + str(c+1) + '  revenue_class_' + str(c+1) + '  class_sat_rate_' + str(c+1) + '  class_util_' + str(c+1) + '   class_price_' + str(c+1)
+            #s += "\n"
             f.write(s)
-    f.close()
+            
+            qos_class = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'rate_dist' : rate_dist}, 2, 'LATENCY', 'QoS_CLASS')
+            class_revenue = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'rate_dist' : rate_dist}, 2, 'LATENCY', 'CLASS_REVENUE')
+            class_sat_rate = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'rate_dist' : rate_dist}, 2, 'LATENCY', 'CLASS_SAT_RATE')
+            class_utils = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'rate_dist' : rate_dist}, 2, 'LATENCY', 'NODE_UTILITIES')
+            class_utils = dict(class_utils)
+            print "class utils:" + repr(class_utils)
+            class_prices = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'rate_dist' : rate_dist}, 2, 'LATENCY', 'PRICE_TIMES')
+            class_prices = dict(class_prices)
+            print  "class prices" + repr(class_prices)
+            for c in range(num_classes):
+                s = str(c+1)
+                s += "\t" + str(qos_class[c]) + "\t" + str(class_revenue[c]) + "\t" + str(class_sat_rate[c]) + "\t" + str(class_utils[0][0][c]) + "\t" + str(class_prices[0.0][0])
+                s += "\n"
+                f.write(s)
+            f.close()
     
     for strategy in strategies:
-        filename = 'qos_' + str(strategy) + '_classes'
+        filename = 'price_' + str(strategy) 
         f = open(filename, 'w')
-        f.write('# QoS for different number of VMs\n')
+        f.write('# ' + 'Prices for different correlation of QoS and popularity' + '\n')
         f.write('#\n')
-        s = 'num_of_vms'
-        for c in range(num_classes):
-            s += '  qos_class_' + str(c+1) + '  revenue_class_' + str(c+1)
-        s += "\n"
+        s = "Correlation\tPrice\n"
         f.write(s)
-        for vms in num_of_vms:
-            qos_class = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'QoS_CLASS')
-            class_revenue = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'CLASS_REVENUE')
-            s = str(vms)
-            for c in range(num_classes):
-                s += "\t" + str(qos_class[c]) + "\t" + str(class_revenue[c])
+        for rate_dist in rate_dists:
+            suffix = '' 
+            if rate_dist[0] > rate_dist[1]:
+                suffix = 'Negative'
+            elif rate_dist[0] < rate_dist[1]:
+                suffix = 'Positive'
+            else:
+                suffix = 'Uncorrelated'
+
+            class_prices = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'rate_dist' : rate_dist}, 2, 'LATENCY', 'PRICE_TIMES')
+            class_prices = dict(class_prices)
+            s = suffix + "\t" + str(class_prices[0.0][0])
             s += "\n"
             f.write(s)
+        f.close()
+    
+    for strategy in strategies:
+        filename = 'idle_' + str(strategy) 
+        f = open(filename, 'w')
+        f.write('# ' + 'Idle times for different correlation of QoS and popularity' + '\n')
+        f.write('#\n')
+        s = "Correlation\tIdleTime\n"
+        f.write(s)
+        for rate_dist in rate_dists:
+            suffix = '' 
+            if rate_dist[0] > rate_dist[1]:
+                suffix = 'Negative'
+            elif rate_dist[0] < rate_dist[1]:
+                suffix = 'Positive'
+            else:
+                suffix = 'Uncorrelated'
 
-    f.close()
+            idle_times = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'rate_dist' : rate_dist}, 2, 'LATENCY', 'IDLE_TIMES_AVG')
+            s = suffix + "\t" + str(idle_times)
+            s += "\n"
+            f.write(s)
+        f.close()
 
 def print_budget_experiment(lst):
     
@@ -808,9 +928,11 @@ def run(config, results, plotdir):
         printTree(l[1])
 
     #print_lru_probability_results(lst) 
-    #print_vm_results_one_service_one_node_k_classes(lst)
-    print_trace_results(lst)
-    #print_vm_results_n_services_one_node_k_classes(lst)
+    print_rate_dist_results(lst) # toy example
+    #print_trace_results(lst)
+    #print_vm_results(lst) # toy example
+    
+    #print_engagement_time_results(lst) # toy example
 
     #print_strategies_performance(lst)
     #print_budget_experiment(lst)
