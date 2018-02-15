@@ -617,7 +617,7 @@ class NetworkModel(object):
                     latency += topology.edge[u][v]['delay']
                     if latency not in topology.node[v]['latencies'].keys():
                         traffic_class = topology.node[v]['n_classes']
-                        topology.node[v]['latencies'][latency] = topology.node[v]['n_classes']
+                        topology.node[v]['latencies'][latency] = traffic_class
                         topology.node[v]['n_classes'] = topology.node[v]['n_classes'] + 1
                         print "There are " + repr(topology.node[v]['n_classes']) + " classes @ node: " + repr(v)
                         if child_traffic_class is not None:
@@ -648,6 +648,11 @@ class NetworkModel(object):
                             topology.node[u]['min_delay'][child_traffic_class] = min_latency
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
                             print "Class: " + repr(traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
+                    if v == src:
+                        # I had to add this to access this info from the collector (compute qos for src node)
+                        topology.node[v]['max_delay'][traffic_class] = path_latency 
+                        topology.node[v]['min_delay'][traffic_class] = min_latency
+
                     child_traffic_class = traffic_class
 
         # Generate the actual services processing requests
@@ -1083,9 +1088,14 @@ class NetworkController(object):
         self.collector.set_node_traffic_rates(node, time, rates, eff_rates)
 
     def set_node_util(self, node, utilities, time=0.0): 
-        """ Set the utility of each node
+        """ Set the utility (a.k.a. QoS gain or bid) of each node
         """
         self.collector.set_node_util(node, utilities, time)
+        
+    def set_node_qos(self, node, qos, time=0.0):
+        """ Set the QoS (not the QoS gain!) of each node
+        """
+        self.collector.set_node_qos(node, qos, time)
     
     def reject_service(self, time, flow_id, service, is_cloud, traffic_class, node, price):
         """ Rejection of the service (request) at node with starting time

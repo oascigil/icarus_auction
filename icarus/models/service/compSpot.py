@@ -246,7 +246,8 @@ class ComputationalSpot(object):
         self.vm_prices = None
         self.service_class_rate = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]
         self.service_class_count = [[0 for x in range(self.num_classes)] for y in range(self.service_population)]
-        self.utilities = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)] 
+        self.utilities = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)] # This is the QoS gain or the bid (different from the actual QoS)
+        self.qos = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]  # This is the actual QoS (not the QS gain)
         self.compute_utilities() # compute the utilities of each service and class
         print ("Utility @ node: " + repr(self.node) + ": " + repr(self.utilities))
         # Outputs from the get_prices() call:
@@ -508,14 +509,13 @@ class ComputationalSpot(object):
         for s in range(self.service_population):
             print ("For service: " + repr(s))
             for c in range(self.num_classes):
-                #class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*u_max
-                
                 class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
                 print ("\tFor class: " + repr(c))
                 print ("\t\tclass_max_delay: " + repr(class_max_delay[c]))
                 print ("\t\tclass_u_min: " + repr(class_u_min))
                 print ("\t\tmin_delay: " + repr(self.model.topology.node[self.node]['min_delay'][c]))
-                self.utilities[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min - class_u_min
+                self.utilities[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min - class_u_min # QoS gain
+                self.qos[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
 
     def compute_prices(self, time, s=1.0,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):
         #U,L,M,X,P,Y     = returnAppSPsInfoForThisMarket(incpID,options)

@@ -131,6 +131,12 @@ class DataCollector(object):
         """
         
         pass
+    
+    def set_node_qos(self, node, qos):
+        """ Reports the end of a replacement interval for services
+        """
+        
+        pass
 
     def request_hop(self, u, v, main_path=True):
         """Reports that a request has traversed the link *(u, v)*
@@ -202,7 +208,7 @@ class CollectorProxy(DataCollector):
 
     EVENTS = ('start_session', 'end_session', 'cache_hit', 'cache_miss', 'server_hit',
               'request_hop', 'content_hop', 'results', 'replacement_interval_over', 
-              'execute_service', 'reject_service', 'set_vm_prices', 'set_node_traffic_rates', 'set_node_util')
+              'execute_service', 'reject_service', 'set_vm_prices', 'set_node_traffic_rates', 'set_node_util', 'set_node_qos')
 
     def __init__(self, view, collectors):
         """Constructor
@@ -277,6 +283,11 @@ class CollectorProxy(DataCollector):
     def set_node_util(self, node, utilities, time):
         for c in self.collectors['set_node_util']:
             c.set_node_util(node, utilities, time)
+    
+    @inheritdoc(DataCollector)
+    def set_node_qos(self, node, qos, time):
+        for c in self.collectors['set_node_qos']:
+            c.set_node_qos(node, qos, time)
 
     @inheritdoc(DataCollector)
     def end_session(self, success=True, time=0, flow_id=0):
@@ -375,7 +386,6 @@ class LatencyCollector(DataCollector):
         self.css = self.view.service_nodes()
         self.n_services = self.css.items()[0][1].service_population
         self.num_classes = max(x.num_classes for x in self.css.values()) #self.css.items()[0][1].num_classes
-
         # Time series for various metrics
         self.idle_times = {}
         self.sat_times = {}
@@ -398,6 +408,7 @@ class LatencyCollector(DataCollector):
         self.class_revenue = [0.0 for x in range(self.num_classes)]
         self.service_revenue = [0.0 for x in range(self.n_services)]
         self.node_utilities = {}
+        self.node_qos = {}
         self.class_sat_rate = [0.0 for x in range(self.num_classes)]
         self.service_sat_rate = [0.0 for x in range(self.n_services)]
         self.sat_requests_nodes = {x:0 for x in self.css.keys()}
@@ -410,18 +421,39 @@ class LatencyCollector(DataCollector):
     def execute_service(self, time, service, is_cloud, traffic_class, node, price):
 
         if not is_cloud:
-            utility = self.node_utilities[node][service][traffic_class]
-            self.qos_class[traffic_class] += utility
+            #utility = self.node_utilities[node][service][traffic_class]
+            qos = self.node_qos[node][service][traffic_class]
+            self.qos_class[traffic_class] += qos
             self.class_executed_requests[traffic_class] += 1
             self.service_executed_requests[service] += 1
-            self.qos_service[service] += utility
+            self.qos_service[service] += qos
             self.class_revenue[traffic_class] += price
             self.service_revenue[service] += price
             self.sat_requests_nodes[node] += 1
-            self.qos_total += utility
+            self.qos_total += qos
             self.revenue_total += price
             self.num_executed += 1
-        
+        else:
+            # compute the qos at the cloud
+            # TODO save the result after computing first time
+            service_max_delay = self.view.model.topology.graph['max_delay']
+            class_max_delay = self.view.model.topology.node[node]['max_delay'][traffic_class]
+            service_min_delay = self.view.model.topology.graph['min_delay']
+            alpha = self.view.model.services[service].alpha
+            u_min = self.view.model.services[service].u_min
+            class_u_min = pow((service_max_delay - class_max_delay + service_min_delay)/service_max_delay, 1/alpha)*(100 - u_min) + u_min
+            # update the stats
+            self.qos_class[traffic_class] += class_u_min
+            self.class_executed_requests[traffic_class] += 1
+            self.service_executed_requests[service] += 1
+            self.qos_service[service] += class_u_min
+            self.class_revenue[traffic_class] += price
+            self.service_revenue[service] += price
+            #self.sat_requests_nodes[node] += 1
+            self.qos_total += class_u_min
+            self.revenue_total += price
+            self.num_executed += 1
+            
     @inheritdoc(DataCollector)
     def reject_service(self, time, service, is_cloud, traffic_class, node, price):
         if not is_cloud:
@@ -450,6 +482,10 @@ class LatencyCollector(DataCollector):
     @inheritdoc(DataCollector)
     def set_node_util(self, node, utilities, time):
         self.node_utilities[node] = utilities
+
+    @inheritdoc(DataCollector)
+    def set_node_qos(self, node, qos, time):
+        self.node_qos[node] = qos
 
     @inheritdoc(DataCollector)
     def replacement_interval_over(self, replacement_interval, timestamp):

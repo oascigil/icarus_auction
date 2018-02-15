@@ -51,22 +51,18 @@ class DoubleAuction(Strategy):
             cs = self.compSpots[node]
             self.controller.set_vm_prices(node, cs.vm_prices)
             self.controller.set_node_util(node, cs.utilities)
+            self.controller.set_node_qos(node, cs.qos)
             self.controller.set_node_traffic_rates(cs.node, 0.0, cs.rate_times[0.0], cs.eff_rate_times[0.0])
 
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
-        This method maps the traffic class of the current node to the upstream node's 
-        traffic class
+        This method retrieves the traffic class of the upstream node, given the 
+        current node's traffic class
         """
-        if type(curr_node) == int and self.topology.graph['parent'][curr_node] != upstream_node:
-            
+        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
             raise ValueError('Parent node does not match upstream')
 
-        if type(curr_node) != int: # this is a Hack to distinguish routers from receivers and sources
-            return traffic_class
-        else:
-            return self.topology.node[curr_node]['parent_class'][traffic_class]
-        
+        return self.topology.node[curr_node]['parent_class'][traffic_class]
             
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -157,23 +153,20 @@ class DoubleAuctionTrace(Strategy):
             cs = self.compSpots[node]
             self.controller.set_vm_prices(node, cs.vm_prices, 0)
             self.controller.set_node_util(node, cs.utilities, 0)
+            self.controller.set_node_qos(node, cs.qos, 0)
             self.controller.set_node_traffic_rates(cs.node, 0.0, cs.rate_times[0.0], cs.eff_rate_times[0.0])
             for s in range(cs.service_population):
                 cs.service_class_rate[s] = 0.0
             
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
-        This method maps the traffic class of the current node to the upstream node's 
-        traffic class
+        This method retrieves the traffic class of the upstream node, given the 
+        current node's traffic class
         """
-        if type(curr_node) == int and self.topology.graph['parent'][curr_node] != upstream_node:
-            
+        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
             raise ValueError('Parent node does not match upstream')
 
-        if type(curr_node) != int: # this is a Hack to distinguish routers from receivers and sources
-            return traffic_class
-        else:
-            return self.topology.node[curr_node]['parent_class'][traffic_class]
+        return self.topology.node[curr_node]['parent_class'][traffic_class]
         
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -197,6 +190,7 @@ class DoubleAuctionTrace(Strategy):
                 cs.compute_prices(time)
                 self.controller.set_vm_prices(n, cs.vm_prices, time)
                 self.controller.set_node_util(n, cs.utilities, time)
+                self.controller.set_node_qos(n, cs.qos, time)
                 if time in cs.rate_times.keys():
                     self.controller.set_node_traffic_rates(cs.node, time, cs.rate_times[time], cs.eff_rate_times[time])
         
@@ -293,21 +287,13 @@ class SelfTuningTrace(Strategy):
     # SELF_TUNING_TRACE
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
-        This method maps the traffic class of the current node to the upstream node's 
-        traffic class
+        This method retrieves the traffic class of the upstream node, given the 
+        current node's traffic class
         """
-        if type(curr_node) == int and self.topology.graph['parent'][curr_node] != upstream_node:
-            
+        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
             raise ValueError('Parent node does not match upstream')
 
-        if type(curr_node) != int: # this is a Hack to distinguish routers from receivers and sources
-            return traffic_class
-        else:
-            return self.topology.node[curr_node]['parent_class'][traffic_class]
-
-            # map traffic class in the second node
-            if next_node != cloud:
-                traffic_class = self.map_traffic_class(node, next_node, traffic_class)
+        return self.topology.node[curr_node]['parent_class'][traffic_class]
 
     # SELF_TUNING_TRACE
     def replace_services(self, debug = True):
@@ -389,6 +375,7 @@ class SelfTuningTrace(Strategy):
                 for s in range(cs.service_population):
                     cs.service_class_count[s] = [0 for c in range(cs.num_classes)]
                 self.controller.set_vm_prices(n, cs.vm_prices, time)
+                self.controller.set_node_qos(n, cs.qos, time)
                 self.controller.set_node_util(n, cs.utilities, time)
         
         service = content
@@ -478,21 +465,19 @@ class LFUTrace(Strategy):
             cs = self.compSpots[node]
             self.controller.set_vm_prices(node, cs.vm_prices, 0)
             self.controller.set_node_util(node, cs.utilities, 0)
+            self.controller.set_node_qos(node, cs.qos, 0)
             for s in range(cs.service_population):
                 cs.service_class_rate[s] = 0.0
     
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
-        This method maps the traffic class of the current node to the upstream node's 
-        traffic class
+        This method retrieves the traffic class of the upstream node, given the 
+        current node's traffic class
         """
-        if type(curr_node) == int and self.topology.graph['parent'][curr_node] != upstream_node:
+        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
             raise ValueError('Parent node does not match upstream')
 
-        if type(curr_node) != int: # this is a Hack to distinguish routers from receivers and sources
-            return traffic_class
-        else:
-            return self.topology.node[curr_node]['parent_class'][traffic_class]
+        return self.topology.node[curr_node]['parent_class'][traffic_class]
     
     def replace_services(self, debug = True):
         """
@@ -571,6 +556,7 @@ class LFUTrace(Strategy):
                     cs.service_class_count[s] = [0 for c in range(cs.num_classes)]
                 self.controller.set_vm_prices(n, cs.vm_prices, time)
                 self.controller.set_node_util(n, cs.utilities, time)
+                self.controller.set_node_qos(n, cs.qos, time)
         
         service = content
         cloud = self.view.content_source(service)
@@ -716,17 +702,13 @@ class StaticTrace(Strategy):
     
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
-        This method maps the traffic class of the current node to the upstream node's 
-        traffic class
+        This method retrieves the traffic class of the upstream node, given the 
+        current node's traffic class
         """
-        if type(curr_node) == int and self.topology.graph['parent'][curr_node] != upstream_node:
-            
+        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
             raise ValueError('Parent node does not match upstream')
 
-        if type(curr_node) != int: # this is a Hack to distinguish routers from receivers and sources
-            return traffic_class
-        else:
-            return self.topology.node[curr_node]['parent_class'][traffic_class]
+        return self.topology.node[curr_node]['parent_class'][traffic_class]
         
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -743,6 +725,7 @@ class StaticTrace(Strategy):
                     cs.service_class_count[s] = [0 for c in range(cs.num_classes)]
                 self.controller.set_vm_prices(n, cs.vm_prices, time)
                 self.controller.set_node_util(n, cs.utilities, time)
+                self.controller.set_node_qos(n, cs.qos, time)
         
         service = content
         cloud = self.view.content_source(service)
@@ -828,21 +811,18 @@ class Fifo(Strategy):
             cs = self.compSpots[node]
             self.controller.set_vm_prices(node, cs.vm_prices)
             self.controller.set_node_util(node, cs.utilities)
+            self.controller.set_node_qos(node, cs.qos)
     
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
-        This method maps the traffic class of the current node to the upstream node's 
-        traffic class
+        This method retrieves the traffic class of the upstream node, given the 
+        current node's traffic class
         """
-        if type(curr_node) == int and self.topology.graph['parent'][curr_node] != upstream_node:
-            
+        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
             raise ValueError('Parent node does not match upstream')
 
-        if type(curr_node) != int: # this is a Hack to distinguish routers from receivers and sources
-            return traffic_class
-        else:
-            return self.topology.node[curr_node]['parent_class'][traffic_class]
-            
+        return self.topology.node[curr_node]['parent_class'][traffic_class]
+    
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
         if time - self.last_replacement > self.replacement_interval:
@@ -962,17 +942,13 @@ class Static(Strategy):
     
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
-        This method maps the traffic class of the current node to the upstream node's 
-        traffic class
+        This method retrieves the traffic class of the upstream node, given the 
+        current node's traffic class
         """
-        if type(curr_node) == int and self.topology.graph['parent'][curr_node] != upstream_node:
-            
+        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
             raise ValueError('Parent node does not match upstream')
 
-        if type(curr_node) != int: # this is a Hack to distinguish routers from receivers and sources
-            return traffic_class
-        else:
-            return self.topology.node[curr_node]['parent_class'][traffic_class]
+        return self.topology.node[curr_node]['parent_class'][traffic_class]
         
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -989,6 +965,7 @@ class Static(Strategy):
                     cs.service_class_count[s] = [0 for c in range(cs.num_classes)]
                 self.controller.set_vm_prices(n, cs.vm_prices, time)
                 self.controller.set_node_util(n, cs.utilities, time)
+                self.controller.set_node_qos(n, cs.qos, time)
         
         service = content
         cloud = self.view.content_source(service)
