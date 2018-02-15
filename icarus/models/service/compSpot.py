@@ -170,7 +170,7 @@ class ComputationalSpot(object):
     Queue. The service time of the Queue is extracted from the service properties. 
     """
 
-    def __init__(self, model, numOfCores, n_services, services, node, sched_policy = "EDF", dist=None, monetaryFocus=False):
+    def __init__(self, model, numOfCores, n_services, services, node, num_classes, sched_policy = "EDF", dist=None, monetaryFocus=False, debugMode=False):
         """Constructor
 
         Parameters
@@ -186,10 +186,11 @@ class ComputationalSpot(object):
         #else:
         self.numOfCores = n_services#numOfCores
         self.is_cloud = False
+        self.debugMode = debugMode
 
         self.service_population = len(services)
         self.model = model
-        self.num_classes = self.model.topology.graph['n_classes']
+        self.num_classes = num_classes
         self.monetaryFocus = monetaryFocus
         if self.monetaryFocus:
             print "Monetary Focus set to True"
@@ -198,6 +199,7 @@ class ComputationalSpot(object):
 
         print ("Number of VMs @node: " + repr(node) + " " + repr(n_services))
         print ("Number of cores @node: " + repr(node) + " " + repr(numOfCores))
+        print ("Number of classes @node: " + repr(node) + " " + repr(num_classes))
 
         #if n_services < numOfCores:
         #    n_services = numOfCores*2
@@ -238,10 +240,7 @@ class ComputationalSpot(object):
         self.services = services
         self.view = None
         self.node = node
-        height = self.model.topology.graph['height']
-        link_delay = self.model.topology.graph['link_delay']
-        self.depth = self.model.topology.node[self.node]['depth']
-        self.delay_to_cs = (height - self.depth)*link_delay 
+        self.delay_to_cloud = self.model.topology.node[self.node]['delay_to_cloud']
 
         # Price of each VM
         self.vm_prices = None
@@ -495,23 +494,28 @@ class ComputationalSpot(object):
         service_max_delay = 0.0
         service_min_delay = float('inf')
         class_max_delay = [0.0] * self.num_classes
-        class_min_delay = [0.0] * self.num_classes
 
         for c in range(self.num_classes):
-            class_max_delay[c] = self.model.topology.graph['max_delay'][c]
-            class_min_delay[c] = 0
-            service_max_delay = max(service_max_delay, class_max_delay[c])
-            service_min_delay = 0
+            class_max_delay[c] = self.model.topology.node[self.node]['max_delay'][c]
 
+        service_max_delay = self.model.topology.graph['max_delay']
+        service_min_delay = self.model.topology.graph['min_delay']
         class_u_min = [0.0]*self.num_classes
         
+        print "Service max delay: " + repr(service_max_delay)
+        print "Service min delay: " + repr(service_min_delay)
+
         for s in range(self.service_population):
+            print ("For service: " + repr(s))
             for c in range(self.num_classes):
                 #class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*u_max
                 
                 class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
-
-                self.utilities[s][c] = class_u_min + (u_max - class_u_min) * pow((class_max_delay[c] - (self.delay_to_cs + self.model.topology.graph['min_delay'][c]))/class_max_delay[c], 1/self.services[s].alpha) 
+                print ("\tFor class: " + repr(c))
+                print ("\t\tclass_max_delay: " + repr(class_max_delay[c]))
+                print ("\t\tclass_u_min: " + repr(class_u_min))
+                print ("\t\tmin_delay: " + repr(self.model.topology.node[self.node]['min_delay'][c]))
+                self.utilities[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min - class_u_min
 
     def compute_prices(self, time, s=1.0,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):
         #U,L,M,X,P,Y     = returnAppSPsInfoForThisMarket(incpID,options)
@@ -520,9 +524,15 @@ class ComputationalSpot(object):
         X               = [0.0] * self.service_population
         L               = self.service_class_rate
         U               = self.utilities
+        u_sorted        = sorted(self.utilities, reverse=True)
+        u_sorted_all_services = [j for i in u_sorted for j in i]
+        u_sorted_all_services = sorted(u_sorted_all_services, reverse=True)
         P               = 100.0
         vmPrices        = []
-        phi = 0.2
+        phi = 0.0
+
+        if self.debugMode:
+            ControlPrint = True
 
         if ControlPrint:
             print "Y = " + repr(Y)
@@ -531,28 +541,31 @@ class ComputationalSpot(object):
             print "L = " + repr(L)
             print "U = " + repr(U)
             print "P = " + repr(P)
+            print "u_sorted: " + repr(u_sorted)
 
         gainPerPrice  = {}
         utilisationPerPrice  = {}
         ratePerPrice  = {}
         effRatePerPrice = {}
-        while True:#iteration
+        for P in u_sorted_all_services:
             if ControlPrint:
                 print '------------------------------'
                 print 'current price per service: ',P,', ',len(vmPrices)
             #estimate requested and admitted traffic
             for appSPID in range(self.service_population):
-                X[appSPID],x = self.stage1AppSPCompactRequestedTraffic(P,U[appSPID],L[appSPID],M[appSPID])
-            #if market has negative profit break
-            flagMonetaryLosses,utilisation,monetaryGain,rates,effective_rates = self.incpMonetaryLoss(X,M,P,phi,self.n_services)
+                X[appSPID],x = self.stage1AppSPCompactRequestedTraffic(P,U[appSPID],L[appSPID],M[appSPID], ControlPrint)
+            flagMonetaryLosses,utilisation,monetaryGain,rates,effective_rates = self.incpMonetaryLoss(X,M,P,phi,self.n_services, ControlPrint)
             ratePerPrice[P] = rates
             effRatePerPrice[P] = effective_rates
-            if flagMonetaryLosses:
-                break
-            gainPerPrice[P]        = monetaryGain
             utilisationPerPrice[P] = utilisation
+            gainPerPrice[P]        = monetaryGain
+            #if market has negative profit break
+            if flagMonetaryLosses:
+                if ControlPrint:
+                    print "Inside flagMonetaryLosses"
+                break
             #update prices
-            P  -=s
+            #P  -=s
             if P<0.0:
                  break
         #identify best value for money
@@ -564,6 +577,8 @@ class ComputationalSpot(object):
                 candidateObjectiveValue  =  gainPerPrice[price]
             else:
                 candidateObjectiveValue  =  round(utilisationPerPrice[price],4)
+            if ControlPrint:
+                print  'candidate price: ',price,', with objective value: ',candidateObjectiveValue
             if candidateObjectiveValue>maxObjectiveValue:
                 if ControlPrint:
                     print 'inside if max objective ',maxObjectiveValue,', candidate: ',candidateObjectiveValue
@@ -578,14 +593,17 @@ class ComputationalSpot(object):
                 vmPrices.append(priceToAssign)#vmPrices.append(0.0)
             else:
                 break
-        self.rate_times[time] = ratePerPrice[priceToAssign]
-        self.eff_rate_times[time] = effRatePerPrice[priceToAssign]
+        if priceToAssign in ratePerPrice.keys(): #dont remove this
+            self.rate_times[time] = ratePerPrice[priceToAssign]
+            self.eff_rate_times[time] = effRatePerPrice[priceToAssign]
         self.vm_prices = vmPrices 
         print ("VM prices @node: " +  repr(self.node) + ": " + repr(self.vm_prices))
+        if ControlPrint:
+            print "Eff. rate at node: " + repr(self.node) + ": " +  repr(self.eff_rate_times[time])
         
         #update arrival rates for the next INCP
         for appSPID in range(self.service_population):
-            X[appSPID],x = self.stage1AppSPCompactRequestedTraffic(P,U[appSPID],L[appSPID],M[appSPID])
+            X[appSPID],x = self.stage1AppSPCompactRequestedTraffic(P,U[appSPID],L[appSPID],M[appSPID], ControlPrint)
             if X[appSPID] != 0:
                 if type(x) == float:
                     self.admitted_service_class_rate[appSPID] = [x]
@@ -643,6 +661,8 @@ class ComputationalSpot(object):
         return effectiveLambda
 
     def estimateMaximumEffectiveL(self, passingRates,exponentialTimeOfExecution,C_d,PrintFlag=False):
+        if PrintFlag:
+            print ("C_d: " + repr(C_d))
         #estimate rho
         rho    = passingRates/exponentialTimeOfExecution
         #Estimate P_d(n=0)
@@ -668,7 +688,7 @@ class ComputationalSpot(object):
         P_s  = float(math.pow(rho,s))/self.fact(s)
         P_s *= P_0
         return P_s,P_0
-    """
+    """#
     def P_sEstimation(self,s,totalCapacity,rho):
         #estimate P_0----------------------
         sumOfP_0Denominator  = 0.0
@@ -686,7 +706,7 @@ class ComputationalSpot(object):
             P_s = float('inf')
         P_s *= P_0
         return P_s,P_0
-    """
+    """# 
     def fact(self, n):
         f = 1.0
         for x in range(1, n +1):
@@ -711,7 +731,7 @@ class ComputationalSpot(object):
             if ControlPrint:
                 print '-------------'
                 print '\tX ',X[appSPID],', M: ',M[appSPID]
-                print '\t\tappSPID: ',appSPID,', allocated VMs: ',vmsCapacity
+                print '\t\tappSPID: ',appSPID,', Capacity: ',vmsCapacity
                 print '\t\t\trate: ',X[appSPID],', eff. rate: ',x
                 print '-------------'
             y +=m*x

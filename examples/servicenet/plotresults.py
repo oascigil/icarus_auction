@@ -599,20 +599,22 @@ def print_engagement_time_results(lst):
     
     strategies = ['DOUBLE_AUCTION']
     #service_times = [[120.0, 120.0], [135.0, 105.0], [150.0, 90.0], [165.0, 75.0], [180.0, 60.0], [105.0, 135.0], [90.0, 150.0], [75.0, 165.0], [60.0, 180.0]]
-    service_times = [[120.0, 120.0], [150.0, 90.0], [180.0, 60.0], [210.0, 30.0], [90.0, 150.0], [60.0, 180.0], [30.0, 210.0]]
+    service_times_service0_constant = [[60.0, 15.0], [60.0, 30.0], [60.0, 45.0], [60.0, 60.0], [60.0, 75.0], [60.0, 90.0], [60.0, 105.0], [60.0, 120.0]] 
+    service_times_service1_constant = [[15.0, 60.0],[30.0, 60.0],[45.0, 60.0], [60,60], [75.0, 60.0], [90.0, 60.0], [105.0, 60.0], [120.0, 60.0]] 
+
     n_services = 2
 
     for strategy in ['DOUBLE_AUCTION']:
-        filename = 'engagement_results_' + str(strategy) 
+        filename = 'engagement_results_service0_constant'
         f = open(filename, 'w')
         f.write('# Engagement time results for two services\n')
-        f.write('# Service 0 has u_min 90 (less demanding) and Service 1 has u_min 0\n')
+        f.write('# Service 0 has u_min 50 (less demanding) and Service 1 has u_min 0\n')
         s = "EngagementTimes"
-        s += "\tvm_prices"
         s += "\tidle_times" 
+        s += "\trevenue" 
         for serv in range(n_services):
+            s += "\tvm_prices" + str(serv)
             s += "\tqos_service" + str(serv)
-            s += "\trevenue" + str(serv)
             s += "\tsat_rate" + str(serv)
         s += "\n"
         f.write(s)
@@ -621,22 +623,59 @@ def print_engagement_time_results(lst):
         vm_prices = None
         sat_rate = None 
         idle_times = None
-        for service_time in service_times:
-            s = str(service_time[0]) + "-" + str(service_time[1])
-            service_prices = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'PRICE_TIMES')
+        for service_time in service_times_service0_constant:
+            s = str(int(service_time[1]))# + "-" + str(service_time[1])
+            service_prices = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'NODE_VM_PRICES')
             serv_utils = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'IDLE_TIMES_AVG')
-            s += "\t"  + str(service_prices[0.0][serv]) 
+            service_prices = dict(service_prices)
+            service_revenue = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'REVENUE_TIMES_AVG')
             s += "\t" + str(serv_utils)
+            s += "\t" + str(service_revenue)
             for serv in range(n_services):
                 qos_service = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'QoS_SERVICE')
-                service_revenue = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'SERVICE_REVENUE')
                 sat_rate = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'SERVICE_SAT_RATE')
-            
-                s += "\t" + str(qos_service[serv]) + "\t" + str(service_revenue[serv]) + "\t" + str(sat_rate[serv]) 
+                s += "\t"  + str(service_prices[serv]) 
+                s += "\t" + str(qos_service[serv]) + "\t" + str(sat_rate[serv]) 
             s += '\n'
             f.write(s)
         f.close()
             
+    for strategy in ['DOUBLE_AUCTION']:
+        filename = 'engagement_results_service1_constant'
+        f = open(filename, 'w')
+        f.write('# Engagement time results for two services\n')
+        f.write('# Service 0 has u_min 50 (less demanding) and Service 1 has u_min 0\n')
+        s = "EngagementTimes"
+        s += "\tidle_times" 
+        s += "\trevenue" 
+        for serv in range(n_services):
+            s += "\tvm_prices" + str(serv)
+            s += "\tqos_service" + str(serv)
+            s += "\tsat_rate" + str(serv)
+        s += "\n"
+        f.write(s)
+        qos_service = None
+        service_revenue = None
+        vm_prices = None
+        sat_rate = None 
+        idle_times = None
+        for service_time in service_times_service1_constant:
+            s = str(int(service_time[0])) # + "-" + str(service_time[1])
+            service_prices = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'NODE_VM_PRICES')
+            serv_utils = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'IDLE_TIMES_AVG')
+            service_prices = dict(service_prices)
+            service_revenue = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'REVENUE_TIMES_AVG')
+            s += "\t" + str(serv_utils)
+            s += "\t" + str(service_revenue)
+            for serv in range(n_services):
+                qos_service = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'QoS_SERVICE')
+                sat_rate = searchDictMultipleCat(lst, ['strategy', 'netconf'], {'name' : strategy, 'service_times' : service_time}, 2, 'LATENCY', 'SERVICE_SAT_RATE')
+                s += "\t"  + str(service_prices[serv]) 
+            
+                s += "\t" + str(qos_service[serv]) + "\t" + str(sat_rate[serv]) 
+            s += '\n'
+            f.write(s)
+        f.close()
     
 
 def print_vm_results(lst):
@@ -717,8 +756,8 @@ def print_trace_results(lst):
     num_of_nodes = 3
 
     periods = [60]
-    #strategies = ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']
-    strategies = ['SELF_TUNING_TRACE']
+    strategies = ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']
+    #strategies = ['SELF_TUNING_TRACE']
     for strategy in strategies:
         filename = "trace_performance_" + str(strategy) + ".txt"
         f = open(filename, 'w')
@@ -921,15 +960,16 @@ def run(config, results, plotdir):
     resultset = RESULTS_READER['PICKLE'](results)
     #Onur: added this BEGIN
     lst = resultset.dump()
+    """
     for l in lst:
         print 'PARAMETERS:\n'
         printTree(l[0])
         print 'RESULTS:\n'
         printTree(l[1])
-
+    """
     #print_lru_probability_results(lst) 
-    print_rate_dist_results(lst) # toy example
-    #print_trace_results(lst)
+    #print_rate_dist_results(lst) # toy example
+    print_trace_results(lst)
     #print_vm_results(lst) # toy example
     
     #print_engagement_time_results(lst) # toy example

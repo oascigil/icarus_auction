@@ -56,7 +56,6 @@ def uniform_computation_placement(topology, computation_budget, service_budget, 
     print("Service budget: " + repr(service_budget))
     cache_size = iround(computation_budget/len(icr_candidates))
     service_size = iround(service_budget/len(icr_candidates))
-    root = [v for v in icr_candidates if topology.node[v]['depth'] == 0][0]
     for v in icr_candidates:
         #if v == root:
         #    topology.node[v]['stack'][1]['service_size'] = -1

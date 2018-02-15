@@ -13,7 +13,7 @@ ICARUS_DIR=${CURR_DIR}/../..
 PLOTS_DIR=${CURR_DIR}/plots
 
 # Config file
-CONFIG_FILE=${CURR_DIR}/config.py #_engagement_duration.py #config_trace.py
+CONFIG_FILE=${CURR_DIR}/config_trace_rocketfuel.py #engagement_duration.py #config2.py
 
 # FIle where results will be saved
 RESULTS_FILE=${CURR_DIR}/results.pickle

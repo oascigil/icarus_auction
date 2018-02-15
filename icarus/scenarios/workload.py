@@ -113,6 +113,7 @@ class StationaryWorkload(object):
         self.topology = topology
         self.rate_cum_dist = [0.0]*self.num_classes
         print "rate_dist= ", rate_dist, "\n"
+        print "Number of classes: " + repr(self.num_classes)
         for c in range(self.num_classes):
             for k in range(0, c+1):
                 self.rate_cum_dist[c] += rate_dist[k]
