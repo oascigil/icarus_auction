@@ -22,7 +22,7 @@ PARALLEL_EXECUTION = True
 
 # Number of processes used to run simulations in parallel.
 # This option is ignored if PARALLEL_EXECUTION = False
-N_PROCESSES = cpu_count()
+N_PROCESSES = 4 #cpu_count()
 
 # Price computation mode for the auction-based service placement (False: maximizes utilisation of the cloudlets; True: maximizes revenue of the cloudlets)
 MONETARYFOCUS = True
@@ -85,7 +85,7 @@ N_WARMUP_REQUESTS = 300 #30000
 # Topology implementations are located in ./icarus/scenarios/topology.py
 TOPOLOGIES =  ['TISCALI']
 N_CLASSES = 1 # Do not change this!
-RATE = 1 #(per edge node) was 100
+RATE = 1 # per-receiver - there are 79 receivers in  TISCALI
 RATE_DIST = [1.0] #[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # how service rates are distributed among classes
 U_MINS = [90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0, 0.0]
 TREE_DEPTH = 2 #was 1
@@ -101,8 +101,9 @@ if len(RATE_DIST) != N_CLASSES:
 # Number of content requests generated after the warmup and logged
 # to generate results. 
 SECS = 60 #do not change
-MINS = 725
-N_MEASURED_REQUESTS = RATE*SECS*MINS*(TREE_DEPTH*BRANCH_FACTOR)
+MINS = 360
+N_RECEIVERS = 79
+N_MEASURED_REQUESTS = RATE*SECS*MINS*N_RECEIVERS
 
 # Replacement Interval in seconds
 REPLACEMENT_INTERVAL = 60.0
@@ -171,9 +172,9 @@ default['netconf']['debugMode'] = DEBUG_MODE
 # Create experiments multiplexing all desired parameters
 
 # 1. Experiments with 1 cloudlet 1 service and k classes
-for strategy in ['DOUBLE_AUCTION_TRACE']:
 #for strategy in ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']:
-    for num_of_vms in [140]: #was 100, 101
+for strategy in ['SELF_TUNING_TRACE']:
+    for num_of_vms in [640]: #four VMs per node (160 routers in total, 79 receivers, 78 functional routers after 82 of them are removed)
         experiment = copy.deepcopy(default)
         experiment['strategy']['name'] = strategy
         experiment['warmup_strategy']['name'] = strategy

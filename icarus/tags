@@ -1038,6 +1038,10 @@ setUpClass	test/test_util.py	/^    def setUpClass(cls):$/;"	m	class:TestUtil
 setUpClass	tools/tests/test_cacheperf.py	/^    def setUpClass(cls):$/;"	m	class:TestCheApproximation
 setUpClass	tools/tests/test_cacheperf.py	/^    def setUpClass(cls):$/;"	m	class:TestNumericCacheHitRatio
 setUpClass	tools/tests/test_traces.py	/^    def setUpClass(cls):$/;"	m	class:TestZipfFit
+set_node_qos	execution/collectors.py	/^    def set_node_qos(self, node, qos):$/;"	m	class:DataCollector
+set_node_qos	execution/collectors.py	/^    def set_node_qos(self, node, qos, time):$/;"	m	class:CollectorProxy
+set_node_qos	execution/collectors.py	/^    def set_node_qos(self, node, qos, time):$/;"	m	class:LatencyCollector
+set_node_qos	execution/network.py	/^    def set_node_qos(self, node, qos, time=0.0):$/;"	m	class:NetworkController
 set_node_traffic_rates	execution/collectors.py	/^    def set_node_traffic_rates(self, node, time, rates, eff_rates):$/;"	m	class:CollectorProxy
 set_node_traffic_rates	execution/collectors.py	/^    def set_node_traffic_rates(self, node, time, rates, eff_rates):$/;"	m	class:DataCollector
 set_node_traffic_rates	execution/collectors.py	/^    def set_node_traffic_rates(self, node, time, rates, eff_rates):$/;"	m	class:LatencyCollector

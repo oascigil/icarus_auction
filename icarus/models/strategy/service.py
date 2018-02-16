@@ -281,6 +281,7 @@ class SelfTuningTrace(Strategy):
             cs = self.compSpots[node]
             self.controller.set_vm_prices(node, cs.vm_prices, 0)
             self.controller.set_node_util(node, cs.utilities, 0)
+	    self.controller.set_node_qos(node, cs.qos, 0)
             for s in range(cs.service_population):
                 cs.service_class_rate[s] = 0.0
 
@@ -296,13 +297,14 @@ class SelfTuningTrace(Strategy):
         return self.topology.node[curr_node]['parent_class'][traffic_class]
 
     # SELF_TUNING_TRACE
-    def replace_services(self, debug = True):
+    def replace_services(self, debug = False):
         """
         This method does the following:
         1. Evaluate instantiated and stored services at each computational spot for the past time interval, ie, [t-interval, t]. 
         2. Decide which services to instantiate in the next time interval [t, t+interval].
         """
-        print ("Replacing services...")
+        if debug:
+            print ("Replacing services...")
         for node, cs in self.compSpots.items():
             if debug:
                 print ("Replacement @node: " + repr(node))
@@ -479,13 +481,14 @@ class LFUTrace(Strategy):
 
         return self.topology.node[curr_node]['parent_class'][traffic_class]
     
-    def replace_services(self, debug = True):
+    def replace_services(self, debug = False):
         """
         This method does the following:
         1. Evaluate instantiated and stored services at each computational spot for the past time interval, ie, [t-interval, t]. 
         2. Decide which services to instantiate in the next time interval [t, t+interval].
         """
-        print ("Replacing services...")
+        if debug:
+            print ("Replacing services...")
         for node, cs in self.compSpots.items():
             if debug:
                 print ("Replacement @node: " + repr(node))

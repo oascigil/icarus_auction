@@ -8,6 +8,9 @@ import collections
 import logging
 
 import numpy as np
+
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 from icarus.util import Settings, Tree, config_logging, step_cdf
