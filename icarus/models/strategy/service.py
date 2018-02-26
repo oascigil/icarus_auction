@@ -631,7 +631,7 @@ class StaticTrace(Strategy):
     """Provision VM resources statically. The assignment of VMs to services is based on the number of requests for each service - 
        Assuming an oracle that knows all the future queries.
     """
-    def __init__(self, view, controller, trace_file = '', n_measured_requests = 0, replacement_interval=5.0, debug=True, **kwargs):
+    def __init__(self, view, controller, trace_file = '', n_measured_requests = 0, replacement_interval=5.0, debug=False, **kwargs):
         super(StaticTrace, self).__init__(view,controller)
         self.receivers = view.topology().receivers()
         self.compSpots = self.view.service_nodes()
@@ -902,7 +902,7 @@ class Static(Strategy):
        Assuming an oracle that knows all the future queries.
     """
     
-    def __init__(self, view, controller, trace_file = '', n_measured_requests = 0, replacement_interval=5.0, debug=True, **kwargs):
+    def __init__(self, view, controller, trace_file = '', n_measured_requests = 0, replacement_interval=5.0, debug=False, **kwargs):
         super(Static, self).__init__(view,controller)
         self.receivers = view.topology().receivers()
         self.compSpots = self.view.service_nodes()

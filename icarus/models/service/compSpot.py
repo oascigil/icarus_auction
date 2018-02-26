@@ -14,6 +14,7 @@ from cvxpy import *
 import numpy
 import math
 import optparse
+import sys
 
 from icarus.util import inheritdoc
 
@@ -240,7 +241,7 @@ class ComputationalSpot(object):
         self.services = services
         self.view = None
         self.node = node
-        self.delay_to_cloud = self.model.topology.node[self.node]['delay_to_cloud']
+        self.delay_to_cloud = self.model.topology.node[self.node]['delay_to_cloud'] # Note this value may not be accurate for Rocketfuel
 
         # Price of each VM
         self.vm_prices = None
@@ -507,13 +508,13 @@ class ComputationalSpot(object):
         print "Service min delay: " + repr(service_min_delay)
 
         for s in range(self.service_population):
-            print ("For service: " + repr(s))
+            #print ("For service: " + repr(s))
             for c in range(self.num_classes):
                 class_u_min = pow((service_max_delay - class_max_delay[c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
-                print ("\tFor class: " + repr(c))
-                print ("\t\tclass_max_delay: " + repr(class_max_delay[c]))
-                print ("\t\tclass_u_min: " + repr(class_u_min))
-                print ("\t\tmin_delay: " + repr(self.model.topology.node[self.node]['min_delay'][c]))
+                #print ("\tFor class: " + repr(c))
+                #print ("\t\tclass_max_delay: " + repr(class_max_delay[c]))
+                #print ("\t\tclass_u_min: " + repr(class_u_min))
+                #print ("\t\tmin_delay: " + repr(self.model.topology.node[self.node]['min_delay'][c]))
                 self.utilities[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min - class_u_min # QoS gain
                 self.qos[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
 
@@ -617,6 +618,12 @@ class ComputationalSpot(object):
     #stage1 app traffic requested 
     def stage1AppSPCompactRequestedTraffic(self, p, u, L, mu_s, ControlPrint=False):
         x = Variable(len(u))
+        indx = 0
+        while indx < len(L):
+            if L[indx] < 0:
+                L[indx] = 0.0
+            indx += 1
+                
         r_1 = x <= L
         r_2 = x >=0.0
         #constraints = [r_1,r_3,r_4]
@@ -625,7 +632,16 @@ class ComputationalSpot(object):
         param  = numpy.subtract(u,p_s)
         objective  = Maximize((1/mu_s)*sum_entries(mul_elemwise(param,x)))
         lp1 = Problem(objective,constraints)
-        result = lp1.solve()
+        try:
+            result = lp1.solve()
+        except:
+            print 'L= ', L
+            print 'p_s= ', p_s
+            print 'u= ', u
+            print 'param= ', param
+            raise RuntimeError("Solver failed\n")
+            sys.exit(0)
+
         Xsum  = 0.0
         if result<0 or math.fabs(result)<0.00001:#solver error estimation
             return Xsum,x

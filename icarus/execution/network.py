@@ -76,7 +76,7 @@ class Service(object):
         self.deadline = deadline
         self.alpha = alpha
         self.u_min = u_min
-        print "Service time: " + repr(service_time)
+        #print "Service time: " + repr(service_time)
 
 def symmetrify_paths(shortest_paths):
     """Make paths symmetric
@@ -586,7 +586,7 @@ class NetworkModel(object):
         if len(topology.graph['sources']) > 1:
             raise ValueError('The number of sources is greater than one')
         for n in topology.graph['routers']:
-            print "node set: " + repr(n) 
+            #print "node set: " + repr(n) 
             src = topology.graph['sources'][0]
             path = self.shortest_path[n][src]
             path_latency = 0.0
@@ -596,43 +596,57 @@ class NetworkModel(object):
 
         # Compute the number of traffic classes at each node
         for recv in topology.graph['receivers']:
-            print "Receiver: " + repr(recv)
+            #print "Receiver: " + repr(recv)
             for src in topology.graph['sources']:
                 path = self.shortest_path[recv][src]
-                print "Path: " + repr(path)
-                path_latency = 0.0
-                for u,v in path_links(path):
-                    path_latency += topology.edge[u][v]['delay']
-                    topology.graph['parent'][u] = v
                 min_latency = topology.edge[path[0]][path[1]]['delay']
+                path_latency = 0.0
+                curr_node = recv
+                while curr_node != src:
+                    next_node = path[1] #if len(path) > 1 else None
+                    path_latency += topology.edge[curr_node][next_node]['delay']
+                    topology.graph['parent'][curr_node] = next_node
+                    curr_node = next_node 
+                    path = self.shortest_path[curr_node][src]
+
+                #for u,v in path_links(path):
+                #    path_latency += topology.edge[u][v]['delay']
+                #    if topology.graph['parent'][u] is not None and topology.graph['parent'][u] != v:
+                #        print "Warning: Node: " + repr(u) + " has multiple parents!"
+                #    else:
+                #        topology.graph['parent'][u] = v
                 if topology.graph['max_delay'] < path_latency:
                     topology.graph['max_delay'] = path_latency
                 if topology.graph['min_delay'] > min_latency:
                     topology.graph['min_delay'] = min_latency
-                print "Min latency: " + repr(min_latency)
-                print "Max latency: " + repr(path_latency)
+                #print "Min latency: " + repr(min_latency)
+                #print "Max latency: " + repr(path_latency)
                 latency = 0.0
                 child_traffic_class = None
-                for u,v in path_links(path):
+                path = self.shortest_path[recv][src]
+                #for u,v in path_links(path):
+                u = recv
+                while u!=src:
+                    v = path[1]
                     latency += topology.edge[u][v]['delay']
                     if latency not in topology.node[v]['latencies'].keys():
                         traffic_class = topology.node[v]['n_classes']
                         topology.node[v]['latencies'][latency] = traffic_class
                         topology.node[v]['n_classes'] = topology.node[v]['n_classes'] + 1
-                        print "There are " + repr(topology.node[v]['n_classes']) + " classes @ node: " + repr(v)
+                        #print "There are " + repr(topology.node[v]['n_classes']) + " classes @ node: " + repr(v)
                         if child_traffic_class is not None:
                             topology.node[u]['parent_class'][child_traffic_class] = traffic_class
                             topology.node[u]['min_delay'][child_traffic_class] = min_latency
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
                             
-                            print "Class: " + repr(child_traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
+                            #print "Class: " + repr(child_traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
                         else:
                             child_traffic_class = topology.node[u]['n_classes']
                             topology.node[u]['n_classes'] = topology.node[u]['n_classes'] + 1
                             topology.node[u]['parent_class'][child_traffic_class] = traffic_class
                             topology.node[u]['min_delay'][child_traffic_class] = min_latency
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
-                            print "Class: " + repr(traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
+                            #print "Class: " + repr(traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
 
                     else: #another traffic class (with same latency to v) exists
                         traffic_class = topology.node[v]['latencies'][latency]
@@ -640,20 +654,22 @@ class NetworkModel(object):
                             topology.node[u]['parent_class'][child_traffic_class] = traffic_class
                             topology.node[u]['min_delay'][child_traffic_class] = min_latency
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
-                            print "Class: " + repr(child_traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
+                            #print "Class: " + repr(child_traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
                         else:
                             child_traffic_class = topology.node[u]['n_classes']
                             topology.node[u]['n_classes'] = topology.node[u]['n_classes'] + 1
                             topology.node[u]['parent_class'][child_traffic_class] = traffic_class
                             topology.node[u]['min_delay'][child_traffic_class] = min_latency
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
-                            print "Class: " + repr(traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
+                            #print "Class: " + repr(traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
                     if v == src:
                         # I had to add this to access this info from the collector (compute qos for src node)
                         topology.node[v]['max_delay'][traffic_class] = path_latency 
                         topology.node[v]['min_delay'][traffic_class] = min_latency
-
+                    
                     child_traffic_class = traffic_class
+                    u = v
+                    path = self.shortest_path[u][src]
 
         # Generate the actual services processing requests
         self.services = []
@@ -711,7 +727,7 @@ class NetworkModel(object):
         self.compSpot = {node: ComputationalSpot(self, comp_size[node], service_size[node], self.services, node, topology.node[node]['n_classes'], sched_policy, None, monetaryFocus, debugMode) for node in comp_size}
                     
         # Run the offline price computation
-        print "Computing prices:"
+        #print "Computing prices:"
 
         if topology.graph['type'] == 'TREE':
             height = topology.graph['height']
@@ -723,7 +739,7 @@ class NetworkModel(object):
                     if ('depth' in topology.node[v].keys()) and (topology.node[v]['depth'] == h):
                         level_h_routers.append(v)
 
-                print "Level_h_routers:" + repr(level_h_routers)
+                #print "Level_h_routers:" + repr(level_h_routers)
                 for v in level_h_routers:
                     cs = self.compSpot[v]
                     if h == height:
@@ -747,7 +763,7 @@ class NetworkModel(object):
                 h -= 1
         elif topology.graph['type'] == "TREE_WITH_VARYING_DELAYS":
             height = topology.graph['height']
-            print "Topo has a height of " + repr(height)
+            #print "Topo has a height of " + repr(height)
             h = height
             while h >= 0:
                 level_h_routers = []
@@ -755,7 +771,7 @@ class NetworkModel(object):
                     if ('depth' in topology.node[v].keys()) and (topology.node[v]['depth'] == h):
                         level_h_routers.append(v)
 
-                print "Level_h_routers:" + repr(level_h_routers)
+                #print "Level_h_routers:" + repr(level_h_routers)
                 for v in level_h_routers:
                     cs = self.compSpot[v]
                     if h == height:
@@ -779,7 +795,7 @@ class NetworkModel(object):
                         for s in range(cs.service_population):
                             for c in range(cs.num_classes):
                                 c_mapped = topology.node[v]['parent_class'][c]
-                                print("class: " + repr(c) + " is: " + repr(c_mapped) + " at node: " + repr(v))
+                                #print("class: " + repr(c) + " is: " + repr(c_mapped) + " at node: " + repr(v))
                                 cs_parent.service_class_rate[s][c_mapped] += diff[s][c]
                         #cs_parent.service_class_rate = numpy.add(cs_parent.service_class_rate, diff)
                         #cs_parent.service_class_rate = cs_parent.service_class_rate.tolist()
@@ -798,7 +814,7 @@ class NetworkModel(object):
                 for n in nodes:
                     if n == source:
                         continue
-                    print "Computing price @node: " + repr(n)
+                    #print "Computing price @node: " + repr(n)
                     parent_of_n = topology.graph['parent'][n]
                     cs = None
                     if n not in rcvrs:
@@ -808,7 +824,7 @@ class NetworkModel(object):
                     if (parent_of_n is not None) and (parent_of_n not in parent_nodes):
                         parent_nodes.append(parent_of_n)
                     if n in rcvrs: # and (parent_of_n in edge_routers):
-                        print "Edge node: ", n
+                        #print "Edge node: ", n
                         if type(rates) == int:
                             #cs_parent.service_class_rate += [[(1.0*rates)/cs.service_population for x in range(cs.num_classes)] for y in range(cs.service_population)]
                             for s in range(cs_parent.service_population):
@@ -829,16 +845,22 @@ class NetworkModel(object):
                         cs_parent = self.compSpot[parent_of_n]
                         diff = numpy.subtract(cs.service_class_rate, cs.admitted_service_class_rate)
                         diff = diff.tolist()
+                        #if cs.num_classes <= 2:
+                            #print "Diff: " + repr(diff)
                         for s in range(cs.service_population):
                             for c in range(cs.num_classes):
                                 c_mapped = topology.node[n]['parent_class'][c]
-                                print("class: " + repr(c) + " is: " + repr(c_mapped) + " at node: " + repr(n))
+                                #print("class: " + repr(c) + " is: " + repr(c_mapped) + " at node: " + repr(n))
+                                if cs_parent.num_classes <= c_mapped:
+                                    print "Error: this should not happen!"
+                                    print "Parent node: " + str(parent_of_n) +" has: " + repr(cs_parent.num_classes) + " classes"
+                                    print cs_parent.service_class_rate
                                 cs_parent.service_class_rate[s][c_mapped] += diff[s][c]
                         
                 nodes = parent_nodes
 
                     
-        print "Done computing prices"
+        #print "Done computing prices"
 
         # This is for a local un-coordinated cache (currently used only by
         # Hashrouting with edge cache)
