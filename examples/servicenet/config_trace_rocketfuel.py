@@ -78,7 +78,7 @@ N_SERVICES = N_CONTENTS
 
 # Number of content requests generated to prepopulate the caches
 # These requests are not logged
-N_WARMUP_REQUESTS = 300 #30000
+N_WARMUP_REQUESTS = 0 #30000
 
 
 # List of all implemented topologies
@@ -101,7 +101,7 @@ if len(RATE_DIST) != N_CLASSES:
 # Number of content requests generated after the warmup and logged
 # to generate results. 
 SECS = 60 #do not change
-MINS = 120
+MINS = 5
 N_RECEIVERS = 79
 N_MEASURED_REQUESTS = RATE*SECS*MINS*N_RECEIVERS
 
@@ -172,8 +172,8 @@ default['netconf']['debugMode'] = DEBUG_MODE
 # Create experiments multiplexing all desired parameters
 
 # 1. Experiments with 1 cloudlet 1 service and k classes
-#for strategy in ['DOUBLE_AUCTION_TRACE']:
-for strategy in ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']:
+#for strategy in ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']:
+for strategy in ['STATIC_TRACE']:
     for num_of_vms in [640]: #four VMs per node (160 routers in total, 79 receivers, 78 functional routers after 82 of them are removed)
         experiment = copy.deepcopy(default)
         experiment['strategy']['name'] = strategy

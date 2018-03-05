@@ -605,7 +605,8 @@ class NetworkModel(object):
                 while curr_node != src:
                     next_node = path[1] #if len(path) > 1 else None
                     path_latency += topology.edge[curr_node][next_node]['delay']
-                    topology.graph['parent'][curr_node] = next_node
+                    if type(curr_node) == int:
+                        topology.graph['parent'][curr_node] = next_node
                     curr_node = next_node 
                     path = self.shortest_path[curr_node][src]
 
@@ -782,24 +783,18 @@ class NetworkModel(object):
                             cs.service_class_rate = [[rate_dist[x]*rates[y] for x in range(cs.num_classes)] for y in range(cs.service_population)]
                     cs.compute_prices(0.0)
                     p = topology.graph['parent'][v]
-                    if p != None:
+                    if p in self.compSpot.keys(): #p != None:
                         cs_parent = self.compSpot[p]
-                        #print 'Admitted service_class_rate: ' + repr(cs.admitted_service_class_rate)
-                        #print 'Input service_class_rate: ' + repr(cs.service_class_rate)
+                        #print '@ node: ' + repr(v) + '\n\tAdmitted service_class_rate: ' + repr(cs.admitted_service_class_rate)
                         diff = numpy.subtract(cs.service_class_rate, cs.admitted_service_class_rate)
                         diff = diff.tolist()
-                        #print 'diff: ' + repr(diff)
-                        #print ("Number of classes in the parent node: " + repr(cs_parent.num_classes))
-
 
                         for s in range(cs.service_population):
                             for c in range(cs.num_classes):
                                 c_mapped = topology.node[v]['parent_class'][c]
                                 #print("class: " + repr(c) + " is: " + repr(c_mapped) + " at node: " + repr(v))
                                 cs_parent.service_class_rate[s][c_mapped] += diff[s][c]
-                        #cs_parent.service_class_rate = numpy.add(cs_parent.service_class_rate, diff)
-                        #cs_parent.service_class_rate = cs_parent.service_class_rate.tolist()
-                        #print 'Parent service_class_rate: ' + repr(cs_parent.service_class_rate)
+                        #print '\n\tParent service_class_rate: ' + repr(cs_parent.service_class_rate) + ' at node: ' + repr(v)
                 h -= 1
         
         elif topology.graph['type'] == "ROCKET_FUEL":

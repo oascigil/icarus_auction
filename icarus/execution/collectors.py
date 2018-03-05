@@ -412,6 +412,11 @@ class LatencyCollector(DataCollector):
         self.class_sat_rate = [0.0 for x in range(self.num_classes)]
         self.service_sat_rate = [0.0 for x in range(self.n_services)]
         self.sat_requests_nodes = {x:0 for x in self.css.keys()}
+        self.per_node_idle_times = {x:[] for x in self.css.keys()} # Idle times per-node 
+        self.per_node_price_times = {x:[] for x in self.css.keys()} # Idle times per-node 
+        self.per_node_rev = {x:0 for x in self.css.keys()} # Total revenue per-node executed requests
+        self.per_node_qos = {x:0 for x in self.css.keys()} # Average QoS gain per-node executed requests 
+        self.per_node_num_executed = {x:0 for x in self.css.keys()} # Num. of executed requests per node
         self.rejected_requests_nodes = {x:0 for x in self.css.keys()}
         self.qos_total = 0.0
         self.revenue_total = 0.0
@@ -422,9 +427,15 @@ class LatencyCollector(DataCollector):
 
         if not is_cloud:
             #utility = self.node_utilities[node][service][traffic_class]
+            #if node not in self.node_qos.keys():
+            #    print ("Node QoS: " + repr(self.node_qos.keys()))
+            #    print ("Node: " + repr(node) + " is missing")
+
             qos = self.node_qos[node][service][traffic_class]
             self.qos_class[traffic_class] += qos
             self.class_executed_requests[traffic_class] += 1
+            self.per_node_qos[node] += qos
+            self.per_node_rev[node] += price
             self.service_executed_requests[service] += 1
             self.qos_service[service] += qos
             self.class_revenue[traffic_class] += price
@@ -433,6 +444,7 @@ class LatencyCollector(DataCollector):
             self.qos_total += qos
             self.revenue_total += price
             self.num_executed += 1
+            self.per_node_num_executed[node] += 1
         else:
             # compute the qos at the cloud
             # TODO save the result after computing first time
@@ -466,6 +478,11 @@ class LatencyCollector(DataCollector):
             self.price_times[time].append((1.0*sum(vm_prices))/len(vm_prices))
         else:
             self.price_times[time] = [(1.0*sum(vm_prices))/len(vm_prices)]
+
+        if node in self.per_node_price_times.keys():
+            self.per_node_price_times[node].append((1.0*sum(vm_prices))/len(vm_prices))
+        else:
+            self.per_node_price_times[node] = [(1.0*sum(vm_prices))/len(vm_prices)]
         
     @inheritdoc(DataCollector)
     def set_node_traffic_rates(self, node, time, rates, eff_rates):
@@ -503,12 +520,13 @@ class LatencyCollector(DataCollector):
         for node, cs in self.css.items():
             if cs.is_cloud:
                 continue
-            
+            if self.view.model.topology.node[node]['n_classes'] == 0:
+                continue #For Rocketfuel, skip the nodes with no traffic
             idle_time = cs.getIdleTime(timestamp)
-            total_idle_time += idle_time
-            total_idle_time /= cs.numOfCores
+            total_idle_time += idle_time/cs.numOfCores
 
             self.node_idle_times[timestamp].append(1.0*idle_time/(cs.numOfCores*replacement_interval))
+            self.per_node_idle_times[node].append(1.0*idle_time/(cs.numOfCores*replacement_interval))
             cs.cpuInfo.idleTime = 0.0
             numberOfnodes += 1
 
@@ -519,13 +537,15 @@ class LatencyCollector(DataCollector):
         for node, cs in self.css.items():
             if cs.is_cloud:
                 continue
+            if self.view.model.topology.node[node]['n_classes'] == 0:
+                continue #For Rocketfuel, skip the nodes with no traffic
             if self.sat_requests_nodes[node] + self.rejected_requests_nodes[node] > 0:
                 node_sat = (1.0*self.sat_requests_nodes[node])/(self.rejected_requests_nodes[node] + self.sat_requests_nodes[node])
             else:
                 node_sat = 0.0
             self.sat_times[timestamp].append(node_sat)
-            print ("Accepted requests @node: " + repr(node) + " is " + repr(self.sat_requests_nodes[node]))
-            print ("Rejected requests @node: " + repr(node) + " is " + repr(self.rejected_requests_nodes[node]))
+            #print ("Accepted requests @node: " + repr(node) + " is " + repr(self.sat_requests_nodes[node]))
+            #print ("Rejected requests @node: " + repr(node) + " is " + repr(self.rejected_requests_nodes[node]))
             self.sat_requests_nodes[node] = 0
             self.rejected_requests_nodes[node] = 0
 
@@ -600,6 +620,17 @@ class LatencyCollector(DataCollector):
         results['QOS_TIMES_AVG'] = sum(self.qos_times.values())/len(self.qos_times.keys())
         results['NODE_RATE_TIMES'] = self.node_rate_times
         results['NODE_EFF_RATE_TIMES'] = self.node_eff_rate_times
+        results['PER_NODE_IDLE_TIMES_AVG'] = {n:(sum(self.per_node_idle_times[n])*1.0)/len(self.per_node_idle_times[n]) for n in self.per_node_idle_times.keys()}
+        results['PER_NODE_REV'] = self.per_node_rev
+        results['PER_NODE_QOS'] = {}
+        for k,v in self.per_node_num_executed.items():
+            if self.per_node_num_executed[k] != 0:
+                results['PER_NODE_QOS'][k] = (1.0*self.per_node_qos[k])/self.per_node_num_executed[k]
+            else:
+                results['PER_NODE_QOS'][k] = 0.0
+        #results['PER_NODE_QOS'] = {n:(1.0*self.per_node_qos[n])/self.per_node_num_executed[n] for n in self.per_node_qos.keys()} #self.per_node_qos
+        results['PER_NODE_PRICE_TIMES'] = {n:(sum(self.per_node_price_times[n])*1.0)/len(self.per_node_price_times[n]) for n in self.per_node_price_times.keys()}
+        results['PER_NODE_EXEC_REQS'] = self.per_node_num_executed #Number of executed requests per node
         
         """
         print "Printing Idle times:"

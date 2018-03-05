@@ -59,10 +59,14 @@ class DoubleAuction(Strategy):
         This method retrieves the traffic class of the upstream node, given the 
         current node's traffic class
         """
-        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
-            raise ValueError('Parent node does not match upstream')
+        #if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
+        #    raise ValueError('Parent node does not match upstream')
+        if curr_node in self.receivers:
+            return self.topology.node[curr_node]['parent_class'][0]
+        else:
+            return self.topology.node[curr_node]['parent_class'][traffic_class]
 
-        return self.topology.node[curr_node]['parent_class'][traffic_class]
+        #return self.topology.node[curr_node]['parent_class'][traffic_class]
             
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -156,17 +160,20 @@ class DoubleAuctionTrace(Strategy):
             self.controller.set_node_qos(node, cs.qos, 0)
             self.controller.set_node_traffic_rates(cs.node, 0.0, cs.rate_times[0.0], cs.eff_rate_times[0.0])
             for s in range(cs.service_population):
-                cs.service_class_rate[s] = 0.0
+                cs.service_class_rate[s] = [0.0 for c in range(cs.num_classes)]
             
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
         This method retrieves the traffic class of the upstream node, given the 
         current node's traffic class
         """
-        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
-            raise ValueError('Parent node does not match upstream')
+        #if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
+        #    raise ValueError('Parent node does not match upstream')
+        if curr_node in self.receivers:
+            return self.topology.node[curr_node]['parent_class'][0]
+        else:
+            return self.topology.node[curr_node]['parent_class'][traffic_class]
 
-        return self.topology.node[curr_node]['parent_class'][traffic_class]
         
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -179,6 +186,8 @@ class DoubleAuctionTrace(Strategy):
             for n in self.compSpots.keys():
                 if self.debug: 
                     print ("Computing prices @" + repr(n))
+                if self.topology.node[n]['n_classes'] == 0:
+                    continue
                 cs = self.compSpots[n]
                 for s in range(cs.service_population):
                     if self.debug:
@@ -281,9 +290,9 @@ class SelfTuningTrace(Strategy):
             cs = self.compSpots[node]
             self.controller.set_vm_prices(node, cs.vm_prices, 0)
             self.controller.set_node_util(node, cs.utilities, 0)
-	    self.controller.set_node_qos(node, cs.qos, 0)
+            self.controller.set_node_qos(node, cs.qos, 0)
             for s in range(cs.service_population):
-                cs.service_class_rate[s] = 0.0
+                cs.service_class_rate[s] = [0.0 for c in range(cs.num_classes)] 
 
     # SELF_TUNING_TRACE
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
@@ -291,13 +300,17 @@ class SelfTuningTrace(Strategy):
         This method retrieves the traffic class of the upstream node, given the 
         current node's traffic class
         """
-        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
-            raise ValueError('Parent node does not match upstream')
+        #if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
+        #    raise ValueError('Parent node does not match upstream')
+        if curr_node in self.receivers:
+            return self.topology.node[curr_node]['parent_class'][0]
+        else:
+            return self.topology.node[curr_node]['parent_class'][traffic_class]
 
-        return self.topology.node[curr_node]['parent_class'][traffic_class]
+        #return self.topology.node[curr_node]['parent_class'][traffic_class]
 
     # SELF_TUNING_TRACE
-    def replace_services(self, debug = False):
+    def replace_services(self, time, debug = False):
         """
         This method does the following:
         1. Evaluate instantiated and stored services at each computational spot for the past time interval, ie, [t-interval, t]. 
@@ -311,26 +324,34 @@ class SelfTuningTrace(Strategy):
             if cs.is_cloud:
                 continue
             cs.service_class_price = [[None for x in range(cs.num_classes)] for y in range(self.num_services)]
-            cs.numberOfInstances = [[0 for x in range(cs.num_classes)] for y in range(self.num_services)]
+            #cs.numberOfInstances = [[0 for x in range(cs.num_classes)] for y in range(self.num_services)]
+            cs.numberOfInstances = [0 for x in range(cs.service_population)]
             cs.vm_prices = []
             cs.service_class_rate = [[0.0 for x in range(cs.num_classes)] for y in range(self.num_services)]
             service_rank = []
+            service_util_rank = []
             for s in range(self.num_services):
                 for c in range(cs.num_classes):
+                    util = cs.utilities[s][c]
                     if cs.service_class_count[s][c] > 0:
-                        util = cs.utilities[s][c]
                         service_rank.append([s, c, util])
+                    service_util_rank.append([s, c, util])
         
             service_rank = sorted(service_rank, key=lambda x: x[2], reverse=True) #larger to smaller util
+            service_util_rank = sorted(service_util_rank, key=lambda x: x[2], reverse=True) #larger to smaller utility
             if debug:
                 print("Sorted ranking for services: " + repr(service_rank))
             vm_cap = cs.n_services
             s_prev = None
             c_prev = None
+            # Rank service,class pairs based on their QoS gain (utility) and then assign VM instances
+            # to service,class pairs based on their observed rate in the previous time interval. 
+            total_count = 0
             for s,c,u in service_rank:
                 if vm_cap == 0:
                     break
                 l = (cs.service_class_count[s][c]*1.0)/self.replacement_interval
+                total_count += cs.service_class_count[s][c]
                 if debug:
                     print("Number of requests for service: " + repr(s) + " class: " + repr(c) + ": " + repr(cs.service_class_count[s][c]))
                 cs.service_class_rate[s][c] = l
@@ -338,27 +359,52 @@ class SelfTuningTrace(Strategy):
                 if debug:
                     print("Lambda = " + repr(l) + " Lambda_effective = " + repr(l_eff))
                 num_vms = l_eff*(cs.services[s].service_time)
-                num_vms = int(round(num_vms))
+                #num_vms = l*(cs.services[s].service_time)
+                num_vms = int(math.ceil(num_vms))
                 if num_vms > 0:
                     num_vms = min(num_vms, vm_cap)
-                    cs.numberOfInstances[s][c] = num_vms
+                    cs.numberOfInstances[s] += num_vms
                     if debug:
                         print (repr(num_vms) + " VMs assigned to service: " + repr(s) + " class: " + repr(c))
                     vm_cap -= num_vms
                 
-                    if s_prev is not None and c_prev is not None:
-                        cs.service_class_price[s_prev][c_prev] = u
-                        cs.vm_prices.append(u)
-                        if debug:
-                            print ("The price of service: " + repr(s_prev) + " class: " + repr(c_prev) + " is " + repr(u))
-                    s_prev = s 
-                    c_prev = c
+            # Assign prices
+            s_prev = None
+            c_prev = None
+            for s,c,u in service_util_rank:
+                if s_prev is not None and c_prev is not None:
+                    cs.service_class_price[s_prev][c_prev] = u
+                    cs.vm_prices.append(u)
+                s_prev = s 
+                c_prev = c
 
             if s_prev is not None and c_prev is not None:
                 cs.service_class_price[s_prev][c_prev] = 1.0
-                if debug:
-                    print ("The price of service: " + repr(s_prev) + " class: " + repr(c_prev) + " is 0")
             cs.vm_prices.append(1.0)
+
+            additional_vms = 0
+            if vm_cap != 0:
+                while vm_cap != 0:
+                    if total_count == 0:
+                        for s,c,u in service_util_rank:
+                            cs.numberOfInstances[s] += 1
+                            vm_cap -= 1
+                            additional_vms += 1
+                            if vm_cap == 0:
+                                break
+
+                    else:
+                       for s,c,u in service_rank:
+                            #if cs.numberOfInstances[s][c] > 0:
+                            if cs.numberOfInstances[s] > 0:
+                                #cs.numberOfInstances[s][c] += 1
+                                cs.numberOfInstances[s] += 1
+                                vm_cap -= 1
+                                additional_vms += 1
+                                if vm_cap == 0:
+                                    break
+                    #print ("Added: " + str(additional_vms) + " VMs in Self-Tuning Strategy at time: " + str(time))
+                    
 
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -368,7 +414,7 @@ class SelfTuningTrace(Strategy):
             #print("Evaluation interval over at time: " + repr(time))
             self.controller.replacement_interval_over(self.replacement_interval, time)
             self.last_replacement = time
-            self.replace_services()
+            self.replace_services(time)
             for n,cs in self.compSpots.items():
                 if cs.is_cloud:
                     continue
@@ -469,47 +515,59 @@ class LFUTrace(Strategy):
             self.controller.set_node_util(node, cs.utilities, 0)
             self.controller.set_node_qos(node, cs.qos, 0)
             for s in range(cs.service_population):
-                cs.service_class_rate[s] = 0.0
+                cs.service_class_rate[s] = [0.0 for c in range(cs.num_classes)] 
     
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
         This method retrieves the traffic class of the upstream node, given the 
         current node's traffic class
         """
-        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
-            raise ValueError('Parent node does not match upstream')
+        #if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
+        #    raise ValueError('Parent node does not match upstream')
 
-        return self.topology.node[curr_node]['parent_class'][traffic_class]
+        if curr_node in self.receivers:
+            return self.topology.node[curr_node]['parent_class'][0]
+        else:
+            return self.topology.node[curr_node]['parent_class'][traffic_class]
+
+        #return self.topology.node[curr_node]['parent_class'][traffic_class]
     
-    def replace_services(self, debug = False):
+    def replace_services(self, time, debug = False):
         """
         This method does the following:
         1. Evaluate instantiated and stored services at each computational spot for the past time interval, ie, [t-interval, t]. 
         2. Decide which services to instantiate in the next time interval [t, t+interval].
         """
         if debug:
-            print ("Replacing services...")
+            print ("LFU replacing services @ time: " + str(time))
         for node, cs in self.compSpots.items():
             if debug:
                 print ("Replacement @node: " + repr(node))
             if cs.is_cloud:
                 continue
-            cs.service_class_price = [[None for x in range(cs.num_classes)] for y in range(self.num_services)]
-            cs.numberOfInstances = [[0 for x in range(cs.num_classes)] for y in range(self.num_services)]
+            #cs.numberOfInstances = [[0 for x in range(cs.num_classes)] for y in range(self.num_services)]
             cs.vm_prices = []
             cs.service_class_rate = [[0.0 for x in range(cs.num_classes)] for y in range(self.num_services)]
             service_utility_rank = []
+            service_all_rank = []
             service_rate_rank = []
+            total_count = 0
             for s in range(self.num_services):
                 for c in range(cs.num_classes):
+                    util = cs.utilities[s][c]
                     if cs.service_class_count[s][c] > 0:
-                        util = cs.utilities[s][c]
                         rate = (cs.service_class_count[s][c]*1.0)/self.replacement_interval
                         service_rate_rank.append([s, c, rate])
                         service_utility_rank.append([s, c, util])
+                        total_count += 1
+                    service_all_rank.append([s, c, util])
+
+            cs.numberOfInstances = [0 for x in range(cs.service_population)]
+            cs.service_class_price = [[None for x in range(cs.num_classes)] for y in range(self.num_services)]
             # Sort (service, class) pairs by rate and utility
             service_rate_rank = sorted(service_rate_rank, key=lambda x: x[2], reverse=True) #larger to smaller rate
             service_utility_rank = sorted(service_utility_rank, key=lambda x: x[2], reverse=True) #larger to smaller utility
+            service_all_rank = sorted(service_all_rank, key=lambda x: x[2], reverse=True) #larger to smaller utility
             #if debug:
             #    print("Sorted ranking for services: " + repr(service_rate_rank))
             #    print("Sorted ranking for services: " + repr(service_utility_rank))
@@ -519,10 +577,11 @@ class LFUTrace(Strategy):
                 if remaining_cap == 0:
                     break
                 rate_eff = cs.estimateMaximumEffectiveL(r, 1.0/cs.services[s].service_time, remaining_cap)
-                num_of_vms = round(rate_eff*cs.services[s].service_time)
+                num_of_vms = math.ceil(rate_eff*cs.services[s].service_time)
                 num_of_vms = min(int(num_of_vms), remaining_cap)
                 remaining_cap -= num_of_vms
-                cs.numberOfInstances[s][c] = num_of_vms
+                #cs.numberOfInstances[s][c] = num_of_vms
+                cs.numberOfInstances[s] += num_of_vms
                 if debug:
                     print (repr(num_of_vms) + " VMs assigned to service: " + repr(s) + " class: " + repr(c))
 
@@ -532,7 +591,7 @@ class LFUTrace(Strategy):
             # Assign prices
             s_prev = None
             c_prev = None
-            for s,c,u in service_utility_rank:
+            for s,c,u in service_all_rank:
                 if s_prev is not None and c_prev is not None:
                     cs.service_class_price[s_prev][c_prev] = u
                     cs.vm_prices.append(u)
@@ -540,8 +599,33 @@ class LFUTrace(Strategy):
                 c_prev = c
 
             if s_prev is not None and c_prev is not None:
-                cs.service_class_price[s_prev][c_prev] = 0.0
-            cs.vm_prices.append(0.0)
+                cs.service_class_price[s_prev][c_prev] = 1.0
+            cs.vm_prices.append(1.0)
+
+            additional_vms = 0
+            if total_count == 0:
+                    while remaining_cap != 0:
+                        for s,c,u in service_all_rank:
+                            cs.numberOfInstances[s] += 1
+                            additional_vms += 1
+                            remaining_cap -= 1
+                            if remaining_cap == 0:
+                                break
+                    #print ("Added: " + str(additional_vms) + " VMs in LFU Strategy at time: " + str(time))
+            else:
+                if remaining_cap != 0:
+                    while remaining_cap != 0:
+                        for s,c,u in service_rate_rank:
+                            #if cs.numberOfInstances[s][c] > 0:
+                            #if cs.numberOfInstances[s] > 0:
+                                #cs.numberOfInstances[s][c] += 1
+                            cs.numberOfInstances[s] += 1
+                            additional_vms += 1
+                            remaining_cap -= 1
+                            if remaining_cap == 0:
+                                break
+                    #print ("Added: " + str(additional_vms) + " VMs in LFU Strategy at time: " + str(time))
+
 
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -551,7 +635,7 @@ class LFUTrace(Strategy):
             #print("Evaluation interval over at time: " + repr(time))
             self.controller.replacement_interval_over(self.replacement_interval, time)
             self.last_replacement = time
-            self.replace_services()
+            self.replace_services(time)
             for n,cs in self.compSpots.items():
                 if self.debug: 
                     print ("Computing prices @" + repr(n))
@@ -679,6 +763,10 @@ class StaticTrace(Strategy):
         for node, cs in self.compSpots.items():
             service_utility_rank = []
             cs.numberOfInstances = [0 for x in range(cs.service_population)]
+            self.controller.set_vm_prices(node, cs.vm_prices)
+            self.controller.set_node_util(node, cs.utilities)
+            self.controller.set_node_qos(node, cs.qos)
+            self.controller.set_node_traffic_rates(cs.node, 0.0, cs.rate_times[0.0], cs.eff_rate_times[0.0])
             remaining_vms = cs.n_services
             for s, count in service_counts_list_sorted:
                 num_vms = math.ceil((1.0*count*cs.n_services)/n_requests)
@@ -702,16 +790,26 @@ class StaticTrace(Strategy):
                     cs.vm_prices.append(u)
                 s_prev = s
                 c_prev = c
+        
+            while remaining_vms != 0:
+                for s,c,u in service_counts_list_sorted:
+                    if cs.numberOfInstances[s] > 0:
+                        cs.numberOfInstances[s] += 1
+                        remaining_vms -= 1
     
     def map_traffic_class(self, curr_node, upstream_node, traffic_class):
         """
         This method retrieves the traffic class of the upstream node, given the 
         current node's traffic class
         """
-        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
-            raise ValueError('Parent node does not match upstream')
+        #if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
+        #    raise ValueError('Parent node does not match upstream')
+        if curr_node in self.receivers:
+            return self.topology.node[curr_node]['parent_class'][0]
+        else:
+            return self.topology.node[curr_node]['parent_class'][traffic_class]
 
-        return self.topology.node[curr_node]['parent_class'][traffic_class]
+        #return self.topology.node[curr_node]['parent_class'][traffic_class]
         
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -821,10 +919,14 @@ class Fifo(Strategy):
         This method retrieves the traffic class of the upstream node, given the 
         current node's traffic class
         """
-        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
-            raise ValueError('Parent node does not match upstream')
+        #if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
+        #    raise ValueError('Parent node does not match upstream')
+        if curr_node in self.receivers:
+            return self.topology.node[curr_node]['parent_class'][0]
+        else:
+            return self.topology.node[curr_node]['parent_class'][traffic_class]
 
-        return self.topology.node[curr_node]['parent_class'][traffic_class]
+        #return self.topology.node[curr_node]['parent_class'][traffic_class]
     
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -919,6 +1021,10 @@ class Static(Strategy):
         for node, cs in self.compSpots.items():
             service_utility_rank = []
             cs.numberOfInstances = [0 for x in range(cs.service_population)]
+            self.controller.set_vm_prices(node, cs.vm_prices)
+            self.controller.set_node_util(node, cs.utilities)
+            self.controller.set_node_qos(node, cs.qos)
+            self.controller.set_node_traffic_rates(cs.node, 0.0, cs.rate_times[0.0], cs.eff_rate_times[0.0])
             remaining_vms = cs.n_services
             for s in range(self.num_services):
                 num_vms = math.ceil((cs.n_services)/self.num_services)
@@ -948,10 +1054,15 @@ class Static(Strategy):
         This method retrieves the traffic class of the upstream node, given the 
         current node's traffic class
         """
-        if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
-            raise ValueError('Parent node does not match upstream')
-
-        return self.topology.node[curr_node]['parent_class'][traffic_class]
+        #if self.topology.graph['parent'][curr_node] != upstream_node: #sanity check
+        #    raise ValueError('Parent node does not match upstream')
+        #print ("Curr node: " + repr(curr_node))
+        #print ("traffic_class: " + repr(traffic_class))
+        
+        if curr_node in self.receivers:
+            return self.topology.node[curr_node]['parent_class'][0]
+        else:
+            return self.topology.node[curr_node]['parent_class'][traffic_class]
         
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log, node, flow_id, traffic_class, rtt_delay, status):
@@ -972,9 +1083,6 @@ class Static(Strategy):
         
         service = content
         cloud = self.view.content_source(service)
-
-        #if self.debug:
-        #    print ("\nEvent\n time: " + repr(time) + " receiver  " + repr(receiver) + " service " + repr(service) + " node " + repr(node) + " flow_id " + repr(flow_id) + " traffic class " + repr(traffic_class) + " status " + repr(status)) 
 
         if receiver == node and status == REQUEST:
             self.controller.start_session(time, receiver, service, log, flow_id, traffic_class)

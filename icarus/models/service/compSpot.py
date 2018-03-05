@@ -439,7 +439,8 @@ class ComputationalSpot(object):
         serviceTime = self.services[service].service_time
         self.cpuInfo.update_core_status(time) #need to call before simulate
         price = 0
-        if self.numberOfInstances[service][traffic_class] > 0:
+        #if self.numberOfInstances[service][traffic_class] > 0:
+        if self.numberOfInstances[service] > 0:
             price = self.service_class_price[service][traffic_class]
         else:
             controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
@@ -450,13 +451,15 @@ class ComputationalSpot(object):
             controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
             return [False, CONGESTION]
         else:
-            if self.cpuInfo.count_running_service_type(service, traffic_class) >= self.numberOfInstances[service][traffic_class]:
+            #if self.cpuInfo.count_running_service_type(service, traffic_class) >= self.numberOfInstances[service][traffic_class]:
+            if self.cpuInfo.count_running_service(service) >= self.numberOfInstances[service]:
                 controller.reject_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price)
                 return [False, CONGESTION]
 
             #utility = self.utilities[service][traffic_class]
             finishTime = time + serviceTime
-            self.cpuInfo.assign_task_to_core(core_indx, finishTime, service, traffic_class)
+            #self.cpuInfo.assign_task_to_core(core_indx, finishTime, service, traffic_class)
+            self.cpuInfo.assign_task_to_core(core_indx, finishTime, service)
             controller.add_event(finishTime, receiver, service, self.node, flow_id, traffic_class, rtt_delay, TASK_COMPLETE) 
             controller.execute_service(time, flow_id, service, self.is_cloud, traffic_class, self.node, price*serviceTime)
             return [True, SUCCESS]
@@ -519,6 +522,21 @@ class ComputationalSpot(object):
                 self.qos[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
 
     def compute_prices(self, time, s=1.0,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):
+        
+        num_positive_indices = 0
+        for s in range(self.service_population):
+            for c in range(self.num_classes):
+                if self.service_class_rate[s][c] < pow(10, -8):
+                    self.service_class_rate[s][c] = 0.0
+                else:
+                    num_positive_indices += 1
+        if num_positive_indices == 0:
+            print "Arrival rate of all services are ~0 - Returning default price 100"
+            self.vm_prices = [100.0]*cs.n_services
+            self.rate_times[time] = [0.0] * self.service_population
+            self.eff_rate_times[time] = [0.0] * self.service_population
+            return
+            
         #U,L,M,X,P,Y     = returnAppSPsInfoForThisMarket(incpID,options)
         Y               = [1.0] * self.service_population
         M               = [1.0/x.service_time for x in self.services]
@@ -570,7 +588,7 @@ class ComputationalSpot(object):
             if P<0.0:
                  break
         #identify best value for money
-        maxObjectiveValue  = 0.0
+        maxObjectiveValue  = -pow(10, -8)
         priceToAssign       = 100.0
         listOfPrices = sorted(list(gainPerPrice.keys()),reverse=True)
         for price in listOfPrices:
@@ -598,7 +616,7 @@ class ComputationalSpot(object):
             self.rate_times[time] = ratePerPrice[priceToAssign]
             self.eff_rate_times[time] = effRatePerPrice[priceToAssign]
         self.vm_prices = vmPrices 
-        print ("VM prices @node: " +  repr(self.node) + ": " + repr(self.vm_prices))
+        #print ("VM prices @node: " +  repr(self.node) + ": " + repr(self.vm_prices))
         if ControlPrint:
             print "Eff. rate at node: " + repr(self.node) + ": " +  repr(self.eff_rate_times[time])
         
@@ -615,14 +633,11 @@ class ComputationalSpot(object):
         for appSPID in range(self.service_population):
             self.admitted_service_rate[appSPID] = X[appSPID]
 
+        if ControlPrint:
+            print "Done computing prices!"
     #stage1 app traffic requested 
     def stage1AppSPCompactRequestedTraffic(self, p, u, L, mu_s, ControlPrint=False):
         x = Variable(len(u))
-        indx = 0
-        while indx < len(L):
-            if L[indx] < 0:
-                L[indx] = 0.0
-            indx += 1
                 
         r_1 = x <= L
         r_2 = x >=0.0
@@ -634,13 +649,21 @@ class ComputationalSpot(object):
         lp1 = Problem(objective,constraints)
         try:
             result = lp1.solve()
-        except:
-            print 'L= ', L
-            print 'p_s= ', p_s
-            print 'u= ', u
-            print 'param= ', param
-            raise RuntimeError("Solver failed\n")
-            sys.exit(0)
+        except SolverError:
+            print "Warning: Solver failed due to convergence problem!"
+            return self.exceptionProblem(u)
+
+             #result = lp1.solve(kktsolver=ROBUST_KKTSOLVER)
+            #return 0, x
+        #try:
+        #    result = lp1.solve()
+        #except:
+        #    print 'L= ', L
+        #    print 'p_s= ', p_s
+        #    print 'u= ', u
+        #    print 'param= ', param
+        #    raise RuntimeError("Solver failed\n")
+        #    sys.exit(0)
 
         Xsum  = 0.0
         if result<0 or math.fabs(result)<0.00001:#solver error estimation
@@ -652,6 +675,19 @@ class ComputationalSpot(object):
             #print '\t\tlamda_1: ',r_1.dual_value
             print '\t\tsum of Xs: ',Xsum
         return Xsum,x.value
+
+    def exceptionProblem(self, u):
+        x = Variable(len(u))
+                
+        r_1 = x <= 0.0
+        r_2 = x >=0.0
+        #constraints = [r_1,r_3,r_4]
+        constraints = [r_1,r_2]
+        objective  = Maximize(x)
+        lp1 = Problem(objective,constraints)
+        result = lp1.solve()
+        
+        return 0.0, x.value
 
     def appSPTrafficRequestedForThisClass(self,p,classU,classLambda,mu_s):
         x = Variable()

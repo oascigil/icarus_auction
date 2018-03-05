@@ -680,6 +680,124 @@ def print_engagement_time_results(lst):
             f.write(s)
         f.close()
     
+def print_vm_results_tree(lst):
+    """
+    Print results for varying number of VMs for 1 node 2 services 10 classes
+    """
+    strategies = ['LFU_TRACE', 'DOUBLE_AUCTION', 'SELF_TUNING_TRACE', 'STATIC'] 
+    num_cloudlets = 7
+    num_of_vms = [7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets]
+    num_classes = 10
+    num_services = 1
+    
+    for strategy in strategies:
+        filename = 'vm_results_' + str(strategy) 
+        f = open(filename, 'w')
+        f.write('# QoS for different number of VMs\n')
+        f.write('#\n')
+        s = "num_of_vms"
+        #for serv in range(num_services):
+        s += "\tqos"
+        s += "\trevenue"
+        s += "\tprice"
+        s += "\tidle\n"
+        f.write(s)
+        qos_service = None
+        service_revenue = None
+        vm_prices = None
+        sat_rate = None 
+        idle_times = None
+        for vms in num_of_vms:
+            qos_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'QOS_TIMES_AVG')
+            revenue_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'REVENUE_TIMES_AVG')
+            price_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PRICE_TIMES_AVG')
+            idle_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'IDLE_TIMES_AVG')
+            #node_rates = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_RATE_TIMES')
+            #node_eff_rates = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_EFF_RATE_TIMES')
+            #node_rates = dict(node_rates)
+            #node_eff_rates = dict(node_eff_rates)
+                
+            s = str(vms)
+            s += "\t" + str(qos_avg) 
+            s += "\t" + str(revenue_avg) 
+            s += "\t" + str(price_avg) 
+            s += "\t" + str(idle_avg) 
+            s += '\n'
+            f.write(s)
+        f.close()
+
+def print_per_node_vm_results_tree(lst):
+    """
+    Print results for varying number of VMs for 1 node 2 services 10 classes
+    """
+    strategies = ['LFU_TRACE', 'DOUBLE_AUCTION', 'SELF_TUNING_TRACE', 'STATIC'] 
+    num_cloudlets = 7
+    num_of_vms = [7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets]
+    
+    for strategy in strategies:
+        filename = 'vm_per_node_results_' + str(strategy) 
+        f = open(filename, 'w')
+        f.write('# QoS for different number of VMs\n')
+        f.write('#\n')
+        s = "num_of_vms"
+        #for serv in range(num_services):
+        s += "\tqos_level_0"
+        s += "\tprice_level_0"
+        s += "\trevenue_level_0"
+        s += "\tidle_level_0"
+        s += "\texec_reqs_level_0"
+        s += "\tqos_level_1"
+        s += "\tprice_level_1"
+        s += "\trevenue_level_1"
+        s += "\tidle_level_1"
+        s += "\texec_reqs_level_1"
+        s += "\tqos_level_2"
+        s += "\tprice_level_2"
+        s += "\trevenue_level_2"
+        s += "\tidle_level_2"
+        s += "\texec_reqs_level_2\n"
+        f.write(s)
+        qos_service = None
+        service_revenue = None
+        vm_prices = None
+        sat_rate = None 
+        idle_times = None
+        for vms in num_of_vms:
+            per_node_qos_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_QOS')
+            per_node_qos_avg = dict(per_node_qos_avg)
+            per_node_price = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_QOS')
+            per_node_price = dict(per_node_price)
+            per_node_revenue_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_REV')
+            per_node_revenue_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_REV')
+            per_node_revenue_avg = dict(per_node_revenue_avg)
+            per_node_idle_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_IDLE_TIMES_AVG')
+            per_node_idle_avg = dict(per_node_idle_avg)
+            per_node_exec_reqs = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_EXEC_REQS')
+            per_node_exec_reqs = dict(per_node_exec_reqs)
+            #node_rates = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_RATE_TIMES')
+            #node_eff_rates = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'NODE_EFF_RATE_TIMES')
+            #node_rates = dict(node_rates)
+            #node_eff_rates = dict(node_eff_rates)
+                
+            s = str(vms)
+            s += "\t" + str(per_node_qos_avg[0]) 
+            s += "\t" + str(per_node_price[0]) 
+            s += "\t" + str(per_node_revenue_avg[0]) 
+            s += "\t" + str(per_node_idle_avg[0]) 
+            s += "\t" + str(per_node_exec_reqs[0]) 
+            s += "\t" + str((1.0*(per_node_qos_avg[1] + per_node_qos_avg[2]))/2) 
+            s += "\t" + str(1.0*(per_node_price[1])) # + per_node_qos_avg[2]))/2) 
+            s += "\t" + str((1.0*(per_node_revenue_avg[1] + per_node_revenue_avg[2]))/2) 
+            s += "\t" + str((1.0*(per_node_idle_avg[1] + per_node_idle_avg[2]))/2) 
+            s += "\t" + str((1.0*(per_node_exec_reqs[1] + per_node_exec_reqs[2]))/2) 
+            s += "\t" + str((1.0*(per_node_qos_avg[3] + per_node_qos_avg[4] +per_node_qos_avg[5] + per_node_qos_avg[6]))/4) 
+            s += "\t" + str(1.0*(per_node_price[3])) # + per_node_qos_avg[2]))/2) 
+            s += "\t" + str((1.0*(per_node_revenue_avg[3] + per_node_revenue_avg[4] +per_node_revenue_avg[5] + per_node_revenue_avg[6]))/4) 
+            s += "\t" + str((1.0*(per_node_idle_avg[3] + per_node_idle_avg[4] +per_node_idle_avg[5] + per_node_idle_avg[6]))/4) 
+            s += "\t" + str((1.0*(per_node_exec_reqs[3] + per_node_exec_reqs[4] +per_node_exec_reqs[5] + per_node_exec_reqs[6]))/4) 
+            s += '\n'
+            f.write(s)
+        f.close()
 
 def print_vm_results(lst):
     """
@@ -759,7 +877,7 @@ def print_trace_results(lst):
     num_of_nodes = 3
 
     periods = [60]
-    strategies = ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC_TRACE']
+    strategies = ['LFU_TRACE', 'DOUBLE_AUCTION_TRACE', 'SELF_TUNING_TRACE', 'STATIC']
     #strategies = ['SELF_TUNING_TRACE']
     for strategy in strategies:
         filename = "trace_performance_" + str(strategy) + ".txt"
@@ -972,8 +1090,10 @@ def run(config, results, plotdir):
     """
     #print_lru_probability_results(lst) 
     #print_rate_dist_results(lst) # toy example
-    print_trace_results(lst)
+    #print_trace_results(lst)
     #print_vm_results(lst) # toy example
+    #print_vm_results_tree(lst) # toy example
+    print_per_node_vm_results_tree(lst)
     
     #print_engagement_time_results(lst) # toy example
 
