@@ -4,7 +4,7 @@ from __future__ import division
 from __future__ import print_function
 
 import networkx as nx
-import random
+#import random
 import math
 
 from icarus.registry import register_strategy
@@ -50,6 +50,7 @@ class DoubleAuction(Strategy):
         for node in self.compSpots.keys():
             cs = self.compSpots[node]
             self.controller.set_vm_prices(node, cs.vm_prices)
+            print ("Price @node: " + str(node) + " is: " + str(cs.vm_prices))
             self.controller.set_node_util(node, cs.utilities)
             self.controller.set_node_qos(node, cs.qos)
             self.controller.set_node_traffic_rates(cs.node, 0.0, cs.rate_times[0.0], cs.eff_rate_times[0.0])

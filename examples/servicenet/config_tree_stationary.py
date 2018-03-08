@@ -8,6 +8,7 @@ import random
 from icarus.util import Tree
 
 # GENERAL SETTINGS
+random.seed(0)
 
 # Debugging mode
 DEBUG_MODE = False
@@ -22,10 +23,11 @@ PARALLEL_EXECUTION = True
 
 # Number of processes used to run simulations in parallel.
 # This option is ignored if PARALLEL_EXECUTION = False
-N_PROCESSES = 10 #cpu_count()/4
+N_PROCESSES = cpu_count()
 
 # Price computation mode for the auction-based service placement (False: maximizes utilisation of the cloudlets; True: maximizes revenue of the cloudlets)
-MONETARYFOCUS = True
+MONETARYFOCUS = False
+
 
 # Granularity of caching.
 # Currently, only OBJECT is supported
@@ -90,11 +92,12 @@ TOPOLOGIES =  ['TREE_WITH_VARYING_DELAYS']
 TREE_DEPTH = 2 #was 1
 BRANCH_FACTOR = 2
 
-N_CLASSES = 10
+N_CLASSES = 1
 RATES = [0.1]*N_SERVICES
 
 RATE = sum(RATES)
-RATE_DIST = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # how service rates are distributed among classes
+RATE_DIST = [1.0]
+#RATE_DIST = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # how service rates are distributed among classes
 
 ALPHAS = [random.random() for x in range(N_CONTENTS)]
 
@@ -162,6 +165,8 @@ default['topology']['name'] = 'PATH'
 default['topology']['name'] = 'TREE_WITH_VARYING_DELAYS'
 default['topology']['k'] = BRANCH_FACTOR
 default['topology']['h'] = TREE_DEPTH
+U_MINS = [90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0, 0.0]
+#U_MINS = [45.0, 40.0, 35.0, 30.0, 25.0, 20.0, 15.0, 10.0, 5.0, 0.0]
 # PATH topology
 #default['topology']['n'] = TREE_DEPTH + 1
 default['topology']['n_classes'] = N_CLASSES
@@ -171,6 +176,7 @@ default['warmup_strategy']['name'] = WARMUP_STRATEGY
 default['netconf']['alphas'] = ALPHAS # Sensitivity of the services to changes in QoS
 default['netconf']['rate_dist'] = RATE_DIST # determines how service rate is distributed among classes
 default['netconf']['service_times'] = SERVICE_TIMES # determines how service rate is distributed among classes
+default['netconf']['umins'] = U_MINS 
 default['netconf']['monetaryFocus'] = MONETARYFOCUS
 default['netconf']['debugMode'] = DEBUG_MODE
 
@@ -178,10 +184,10 @@ default['netconf']['debugMode'] = DEBUG_MODE
 
 # 1. Experiments with 1 cloudlet 1 service and k classes
 num_cloudlets = pow(BRANCH_FACTOR, TREE_DEPTH+1) - 1
-#for strategy in ['DOUBLE_AUCTION']:
 for strategy in ['LFU_TRACE', 'DOUBLE_AUCTION', 'SELF_TUNING_TRACE', 'STATIC']:
-    for num_of_vms in [7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets]: 
-    #for num_of_vms in [49*num_cloudlets]: 
+#for strategy in ['DOUBLE_AUCTION']:
+    for num_of_vms in [2*num_cloudlets, 7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets, 56*num_cloudlets, 63*num_cloudlets, 70*num_cloudlets]: 
+    #for num_of_vms in [70*num_cloudlets]: 
         experiment = copy.deepcopy(default)
         experiment['strategy']['name'] = strategy
         experiment['warmup_strategy']['name'] = strategy

@@ -166,17 +166,19 @@ class StationaryWorkloadTiscali(object):
                 continue
 
             traffic_class = 0 
-            x = random.random()
-            for c in range(self.num_classes):
-                if x < self.rate_cum_dist[c]:
-                    traffic_class = c
-                    break
+            #x = random.random()
+            #for c in range(self.num_classes):
+            #    if x < self.rate_cum_dist[c]:
+            #        traffic_class = c
+            #        break
 
             #int(self.zipf.rv()) #random.randint(0, self.num_classes-1)
             if self.beta == 0:
-                receiver = self.receivers[n*self.num_classes + traffic_class] #random.choice(self.receivers)
+                receiver = random.choice(self.receivers)
+                #receiver = self.receivers[n*self.num_classes + traffic_class] #random.choice(self.receivers)
             else:
-                receiver = self.receivers[self.receiver_dist.rv() - 1]
+                receiver = random.choice(self.receivers)
+                #receiver = self.receivers[self.receiver_dist.rv() - 1]
             node = receiver
             #content = int(self.zipf.rv())
             content = s
@@ -562,15 +564,17 @@ class TraceDrivenWorkload(object):
                     content = int(line)
 
                 traffic_class = 0 
-                x = random.random()
-                for c in range(self.num_classes):
-                    if x < self.rate_cum_dist[c]:
-                        traffic_class = c
-                        break
+                #x = random.random()
+                #for c in range(self.num_classes):
+                #    if x < self.rate_cum_dist[c]:
+                #        traffic_class = c
+                #        break
                 if self.beta == 0:
-                    receiver = self.receivers[node_indx*self.num_classes + traffic_class] #random.choice(self.receivers)
+                    receiver = random.choice(self.receivers)
+                    #receiver = self.receivers[node_indx*self.num_classes + traffic_class] #random.choice(self.receivers)
                 else:
-                    receiver = self.receivers[self.receiver_dist.rv() - 1]
+                    receiver = random.choice(self.receivers)
+                    #receiver = self.receivers[self.receiver_dist.rv() - 1]
                 node = receiver
                 log = (req_counter >= self.n_warmup)
                 flow_id += 1

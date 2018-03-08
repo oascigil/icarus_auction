@@ -431,7 +431,8 @@ class LatencyCollector(DataCollector):
             #    print ("Node QoS: " + repr(self.node_qos.keys()))
             #    print ("Node: " + repr(node) + " is missing")
 
-            qos = self.node_qos[node][service][traffic_class]
+            #qos = self.node_qos[node][service][traffic_class]
+            qos = self.node_utilities[node][service][traffic_class]
             self.qos_class[traffic_class] += qos
             self.class_executed_requests[traffic_class] += 1
             self.per_node_qos[node] += qos
@@ -455,14 +456,17 @@ class LatencyCollector(DataCollector):
             u_min = self.view.model.services[service].u_min
             class_u_min = pow((service_max_delay - class_max_delay + service_min_delay)/service_max_delay, 1/alpha)*(100 - u_min) + u_min
             # update the stats
-            self.qos_class[traffic_class] += class_u_min
+            #self.qos_class[traffic_class] += class_u_min
+            self.qos_class[traffic_class] += 0
             self.class_executed_requests[traffic_class] += 1
             self.service_executed_requests[service] += 1
-            self.qos_service[service] += class_u_min
+            #self.qos_service[service] += class_u_min
+            self.qos_service[service] += 0
             self.class_revenue[traffic_class] += price
             self.service_revenue[service] += price
             #self.sat_requests_nodes[node] += 1
-            self.qos_total += class_u_min
+            # self.qos_total += class_u_min REPLACED QOS WITH QOS_GAIN
+            self.qos_total += 0
             self.revenue_total += price
             self.num_executed += 1
             
@@ -474,6 +478,9 @@ class LatencyCollector(DataCollector):
     @inheritdoc(DataCollector)
     def set_vm_prices(self, node, vm_prices, time):
         self.node_prices[node] = vm_prices[0]
+        # Sanity check to see if the Comp. Spots with no traffic are removed
+        if self.view.model.topology.node[node]['n_classes'] == 0:
+            print "\n\nError: this should not happen in set_vm_prices!\n\n"
         if time in self.price_times.keys():
             self.price_times[time].append((1.0*sum(vm_prices))/len(vm_prices))
         else:
@@ -484,6 +491,7 @@ class LatencyCollector(DataCollector):
         else:
             self.per_node_price_times[node] = [(1.0*sum(vm_prices))/len(vm_prices)]
         
+        #print ("set_vm_prices @collector for node: " + str(node) + ": "+ str(self.per_node_price_times[node]))
     @inheritdoc(DataCollector)
     def set_node_traffic_rates(self, node, time, rates, eff_rates):
         if time in self.node_eff_rate_times.keys():
@@ -499,10 +507,12 @@ class LatencyCollector(DataCollector):
     @inheritdoc(DataCollector)
     def set_node_util(self, node, utilities, time):
         self.node_utilities[node] = utilities
+        #print ("set_node_util @collector for node: " + str(node) + ": " + str(self.node_utilities[node]))
 
     @inheritdoc(DataCollector)
     def set_node_qos(self, node, qos, time):
         self.node_qos[node] = qos
+        #print ("set_node_qos @collector for node: " + str(node) + ": "+ str(self.node_qos[node]))
 
     @inheritdoc(DataCollector)
     def replacement_interval_over(self, replacement_interval, timestamp):
@@ -616,19 +626,26 @@ class LatencyCollector(DataCollector):
         results['NODE_UTILITIES'] = self.node_utilities
         results['IDLE_TIMES_AVG'] = sum(self.idle_times.values())/len(self.idle_times.keys())
         results['REVENUE_TIMES_AVG'] = sum(self.revenue_times.values())/len(self.revenue_times.keys())
-        results['PRICE_TIMES_AVG'] = sum([x[0] for x in self.price_times.values()])/len(self.price_times.keys())
+        #results['PRICE_TIMES_AVG'] = sum([x[0] for x in self.price_times.values()])/len(self.price_times.keys())
+        results['PRICE_TIMES_AVG'] = sum([sum(y)/len(y) for y in self.price_times.values()])/len(self.price_times.values())
         results['QOS_TIMES_AVG'] = sum(self.qos_times.values())/len(self.qos_times.keys())
         results['NODE_RATE_TIMES'] = self.node_rate_times
         results['NODE_EFF_RATE_TIMES'] = self.node_eff_rate_times
         results['PER_NODE_IDLE_TIMES_AVG'] = {n:(sum(self.per_node_idle_times[n])*1.0)/len(self.per_node_idle_times[n]) for n in self.per_node_idle_times.keys()}
         results['PER_NODE_REV'] = self.per_node_rev
         results['PER_NODE_QOS'] = {}
+        #print "per_node_qos at results(): " + str(self.per_node_qos)
+        #print "per_node_num_executed at results(): " + str(self.per_node_num_executed)
+        #print "per_node_price_times at results(): " + str(self.per_node_price_times)
         for k,v in self.per_node_num_executed.items():
             if self.per_node_num_executed[k] != 0:
                 results['PER_NODE_QOS'][k] = (1.0*self.per_node_qos[k])/self.per_node_num_executed[k]
+                #print "QoS for node: " + str(k) + ": " + str(results['PER_NODE_QOS'][k])
             else:
                 results['PER_NODE_QOS'][k] = 0.0
         #results['PER_NODE_QOS'] = {n:(1.0*self.per_node_qos[n])/self.per_node_num_executed[n] for n in self.per_node_qos.keys()} #self.per_node_qos
+        #print "PRICE_TIMES: " + str(self.price_times)
+        print "IDLE_TIMES_AVG:" + str(self.idle_times)
         results['PER_NODE_PRICE_TIMES'] = {n:(sum(self.per_node_price_times[n])*1.0)/len(self.per_node_price_times[n]) for n in self.per_node_price_times.keys()}
         results['PER_NODE_EXEC_REQS'] = self.per_node_num_executed #Number of executed requests per node
         

@@ -8,6 +8,7 @@ import random
 from icarus.util import Tree
 
 # GENERAL SETTINGS
+random.seed(0)
 
 # Debugging mode
 DEBUG_MODE = False
@@ -86,15 +87,15 @@ N_WARMUP_REQUESTS = 0 #30000
 
 # List of all implemented topologies
 # Topology implementations are located in ./icarus/scenarios/topology.py
-TOPOLOGIES =  ['TREE_WITH_VARYING_DELAYS']
+TOPOLOGIES =  ['TISCALI']
 TREE_DEPTH = 2 #was 1
 BRANCH_FACTOR = 2
 
-N_CLASSES = 10
+N_CLASSES = 1
 RATES = [0.1]*N_SERVICES
 
 RATE = sum(RATES)
-RATE_DIST = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # how service rates are distributed among classes
+RATE_DIST = [1.0] #0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # how service rates are distributed among classes
 
 ALPHAS = [random.random() for x in range(N_CONTENTS)]
 
@@ -136,7 +137,7 @@ SCHED_POLICY = 'EDF'
 EXPERIMENT_QUEUE = deque()
 default = Tree()
 
-default['workload'] = {'name':       'STATIONARY',
+default['workload'] = {'name':       'STATIONARY_TISCALI',
                        'n_contents': N_CONTENTS,
                        'n_warmup':   0,
                        'n_measured': N_MEASURED_REQUESTS,
@@ -176,10 +177,10 @@ default['netconf']['debugMode'] = DEBUG_MODE
 # Create experiments multiplexing all desired parameters
 
 # 1. Experiments with 1 cloudlet 1 service and k classes
-num_cloudlets = 82 #pow(BRANCH_FACTOR, TREE_DEPTH+1) - 1
-#for strategy in ['LFU_TRACE']:
-for strategy in ['LFU_TRACE', 'DOUBLE_AUCTION', 'SELF_TUNING_TRACE', 'STATIC']:
-    for num_of_vms in [5*num_cloudlets, 10*num_cloudlets, 15*num_cloudlets, 20*num_cloudlets, 25*num_cloudlets, 30*num_cloudlets, 35*num_cloudlets, 40*num_cloudlets]: 
+num_cloudlets = 160 #pow(BRANCH_FACTOR, TREE_DEPTH+1) - 1
+#for strategy in ['LFU_TRACE', 'DOUBLE_AUCTION', 'SELF_TUNING_TRACE', 'STATIC']:
+for strategy in ['DOUBLE_AUCTION']:
+    for num_of_vms in [10*num_cloudlets, 20*num_cloudlets, 30*num_cloudlets, 40*num_cloudlets, 50*num_cloudlets, 60*num_cloudlets, 70*num_cloudlets, 80*num_cloudlets]: 
         experiment = copy.deepcopy(default)
         experiment['strategy']['name'] = strategy
         experiment['warmup_strategy']['name'] = strategy

@@ -685,8 +685,12 @@ def print_vm_results_tree(lst):
     Print results for varying number of VMs for 1 node 2 services 10 classes
     """
     strategies = ['LFU_TRACE', 'DOUBLE_AUCTION', 'SELF_TUNING_TRACE', 'STATIC'] 
-    num_cloudlets = 7
-    num_of_vms = [7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets]
+    strategies = ['DOUBLE_AUCTION'] 
+    #num_cloudlets = 7
+    num_cloudlets = 160
+    #num_of_vms = [7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets, 56*num_cloudlets, 63*num_cloudlets, 70*num_cloudlets]
+    #num_of_vms = [2*num_cloudlets, 7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets, 56*num_cloudlets, 63*num_cloudlets, 70*num_cloudlets]
+    num_of_vms = [10*num_cloudlets, 20*num_cloudlets, 30*num_cloudlets, 40*num_cloudlets, 50*num_cloudlets, 60*num_cloudlets, 70*num_cloudlets, 80*num_cloudlets]
     num_classes = 10
     num_services = 1
     
@@ -717,7 +721,7 @@ def print_vm_results_tree(lst):
             #node_rates = dict(node_rates)
             #node_eff_rates = dict(node_eff_rates)
                 
-            s = str(vms)
+            s = str(int(vms/num_cloudlets))
             s += "\t" + str(qos_avg) 
             s += "\t" + str(revenue_avg) 
             s += "\t" + str(price_avg) 
@@ -732,7 +736,9 @@ def print_per_node_vm_results_tree(lst):
     """
     strategies = ['LFU_TRACE', 'DOUBLE_AUCTION', 'SELF_TUNING_TRACE', 'STATIC'] 
     num_cloudlets = 7
-    num_of_vms = [7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets]
+    #num_of_vms = [7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets]
+    #num_of_vms = [7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets, 56*num_cloudlets, 63*num_cloudlets, 70*num_cloudlets]
+    num_of_vms = [2*num_cloudlets, 7*num_cloudlets, 14*num_cloudlets, 21*num_cloudlets, 28*num_cloudlets, 35*num_cloudlets, 42*num_cloudlets, 49*num_cloudlets, 56*num_cloudlets, 63*num_cloudlets, 70*num_cloudlets]
     
     for strategy in strategies:
         filename = 'vm_per_node_results_' + str(strategy) 
@@ -765,9 +771,8 @@ def print_per_node_vm_results_tree(lst):
         for vms in num_of_vms:
             per_node_qos_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_QOS')
             per_node_qos_avg = dict(per_node_qos_avg)
-            per_node_price = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_QOS')
+            per_node_price = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_PRICE_TIMES')
             per_node_price = dict(per_node_price)
-            per_node_revenue_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_REV')
             per_node_revenue_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_REV')
             per_node_revenue_avg = dict(per_node_revenue_avg)
             per_node_idle_avg = searchDictMultipleCat(lst, ['strategy', 'computation_placement'], {'name' : strategy, 'service_budget' : vms}, 2, 'LATENCY', 'PER_NODE_IDLE_TIMES_AVG')
@@ -779,7 +784,7 @@ def print_per_node_vm_results_tree(lst):
             #node_rates = dict(node_rates)
             #node_eff_rates = dict(node_eff_rates)
                 
-            s = str(vms)
+            s = str(int(vms/num_cloudlets))
             s += "\t" + str(per_node_qos_avg[0]) 
             s += "\t" + str(per_node_price[0]) 
             s += "\t" + str(per_node_revenue_avg[0]) 
@@ -1091,9 +1096,9 @@ def run(config, results, plotdir):
     #print_lru_probability_results(lst) 
     #print_rate_dist_results(lst) # toy example
     #print_trace_results(lst)
-    #print_vm_results(lst) # toy example
-    #print_vm_results_tree(lst) # toy example
-    print_per_node_vm_results_tree(lst)
+    #print_vm_results(lst) # toy experiment
+    print_vm_results_tree(lst) # real experiment 
+    #print_per_node_vm_results_tree(lst)
     
     #print_engagement_time_results(lst) # toy example
 

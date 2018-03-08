@@ -185,6 +185,7 @@ class ComputationalSpot(object):
         #    self.numOfCores = 100000 # this should really be infinite
         #    self.is_cloud = True
         #else:
+        random.seed(0)
         self.numOfCores = n_services#numOfCores
         self.is_cloud = False
         self.debugMode = debugMode
@@ -193,10 +194,10 @@ class ComputationalSpot(object):
         self.model = model
         self.num_classes = num_classes
         self.monetaryFocus = monetaryFocus
-        if self.monetaryFocus:
-            print "Monetary Focus set to True"
-        else:
-            print "Monetary Focus set to False"
+        #if self.monetaryFocus:
+        #    print "Monetary Focus set to True"
+        #else:
+        #    print "Monetary Focus set to False"
 
         print ("Number of VMs @node: " + repr(node) + " " + repr(n_services))
         print ("Number of cores @node: " + repr(node) + " " + repr(numOfCores))
@@ -241,7 +242,7 @@ class ComputationalSpot(object):
         self.services = services
         self.view = None
         self.node = node
-        self.delay_to_cloud = self.model.topology.node[self.node]['delay_to_cloud'] # Note this value may not be accurate for Rocketfuel
+        #self.delay_to_cloud = self.model.topology.node[self.node]['delay_to_cloud'] # Note this value may not be accurate for Rocketfuel
 
         # Price of each VM
         self.vm_prices = None
@@ -250,7 +251,8 @@ class ComputationalSpot(object):
         self.utilities = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)] # This is the QoS gain or the bid (different from the actual QoS)
         self.qos = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]  # This is the actual QoS (not the QS gain)
         self.compute_utilities() # compute the utilities of each service and class
-        print ("Utility @ node: " + repr(self.node) + ": " + repr(self.utilities))
+        #print ("Utility (QoS gain) @ node: " + repr(self.node) + ": " + repr(self.utilities))
+        #print ("QoS @ node: " + repr(self.node) + ": " + repr(self.qos))
         # Outputs from the get_prices() call:
         self.admitted_service_rate = [0.0]*self.service_population
         self.admitted_service_class_rate = [[0.0 for x in range(self.num_classes)] for y in range(self.service_population)]
@@ -354,6 +356,8 @@ class ComputationalSpot(object):
         """
         Admit a task if there is an idle VM or can be queued
         """
+
+
         serviceTime = self.services[service].service_time
         self.cpuInfo.update_core_status(time) #need to call before simulate
         core_indx, num_free_cores = self.cpuInfo.get_available_core(time)
@@ -408,6 +412,8 @@ class ComputationalSpot(object):
         """
         Admit a task if there is an idle VM 
         """
+        if self.model.topology.node[self.node]['n_classes'] == 0:
+            print "\n\nError: This should not happen!!!\n\n"
         self.service_class_count[service][traffic_class] += 1
         serviceTime = self.services[service].service_time
         self.cpuInfo.update_core_status(time) #need to call before simulate
@@ -519,8 +525,8 @@ class ComputationalSpot(object):
                 #print ("\t\tclass_u_min: " + repr(class_u_min))
                 #print ("\t\tmin_delay: " + repr(self.model.topology.node[self.node]['min_delay'][c]))
                 self.utilities[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min - class_u_min # QoS gain
-                self.qos[s][c] = pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
-
+                self.qos[s][c] =  self.utilities[s][c] + class_u_min #pow((service_max_delay - self.model.topology.node[self.node]['min_delay'][c] + service_min_delay)/service_max_delay, 1/self.services[s].alpha)*(u_max - self.services[s].u_min) + self.services[s].u_min
+        #print "QoS: " + str(self.qos)
     def compute_prices(self, time, s=1.0,ControlPrint=False): #u,L,phi,gamma,mu_s,capacity):
         
         num_positive_indices = 0
@@ -531,8 +537,8 @@ class ComputationalSpot(object):
                 else:
                     num_positive_indices += 1
         if num_positive_indices == 0:
-            print "Arrival rate of all services are ~0 - Returning default price 100"
-            self.vm_prices = [100.0]*cs.n_services
+            print "Arrival rate of all services are ~0 - Returning default price 0"
+            self.vm_prices = [0.0]*self.n_services
             self.rate_times[time] = [0.0] * self.service_population
             self.eff_rate_times[time] = [0.0] * self.service_population
             return
@@ -651,6 +657,7 @@ class ComputationalSpot(object):
             result = lp1.solve()
         except SolverError:
             print "Warning: Solver failed due to convergence problem!"
+            print "Status:", result.status
             return self.exceptionProblem(u)
 
              #result = lp1.solve(kktsolver=ROBUST_KKTSOLVER)
@@ -671,7 +678,7 @@ class ComputationalSpot(object):
         for element in x:
             Xsum  += element.value
         if ControlPrint:
-            print '\tAppSP gain: ',result,', ',x.value[0],', ',x.value[1], ', ', x.value[9]
+            #print '\tAppSP gain: ',result,', ',x.value[0],', ',x.value[1], ', ', x.value[9]
             #print '\t\tlamda_1: ',r_1.dual_value
             print '\t\tsum of Xs: ',Xsum
         return Xsum,x.value

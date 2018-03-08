@@ -136,12 +136,14 @@ def topology_tree_with_varying_delays(k, h, delay=EXTERNAL_LINK_DELAY/1000, n_cl
             topology.graph['parent'][v] = u 
             
         topology.edge[u][v]['type'] = 'internal'
-        random_delay = random.uniform(min_delay, max_delay)
+        #random_delay = random.uniform(min_delay, max_delay)
+
+        random_delay = random.uniform(max_delay-0.003, max_delay+0.003)
         if u is 0 or v is 0:
             topology.edge[u][v]['delay'] = random_delay
             print "Edge between " + repr(u) + " and " + repr(v) + " delay: " + repr(topology.edge[u][v]['delay'])
         else:
-            topology.edge[u][v]['delay'] = random_delay
+            topology.edge[u][v]['delay'] = 2*random_delay
             print "Edge between " + repr(u) + " and " + repr(v) + " delay: " + repr(topology.edge[u][v]['delay'])
 
     for v in topology.nodes_iter():
@@ -672,6 +674,7 @@ def topology_tiscali(min_delay = INTERNAL_LINK_DELAY/1000, max_delay=EXTERNAL_LI
     topology : fnss.Topology
         The topology object
     """
+    random.seed(0)
     # 240 nodes in the main component
     topology = fnss.parse_rocketfuel_isp_map(path.join(TOPOLOGY_RESOURCES_DIR,
                                                        '3257.r0.cch')

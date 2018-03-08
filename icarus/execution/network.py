@@ -598,6 +598,7 @@ class NetworkModel(object):
         for recv in topology.graph['receivers']:
             #print "Receiver: " + repr(recv)
             for src in topology.graph['sources']:
+                #print "Src: " + str(src)
                 path = self.shortest_path[recv][src]
                 min_latency = topology.edge[path[0]][path[1]]['delay']
                 path_latency = 0.0
@@ -637,7 +638,7 @@ class NetworkModel(object):
                         #print "There are " + repr(topology.node[v]['n_classes']) + " classes @ node: " + repr(v)
                         if child_traffic_class is not None:
                             topology.node[u]['parent_class'][child_traffic_class] = traffic_class
-                            topology.node[u]['min_delay'][child_traffic_class] = min_latency
+                            topology.node[u]['min_delay'][child_traffic_class] = latency - topology.edge[u][v]['delay'] 
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
                             
                             #print "Class: " + repr(child_traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
@@ -645,7 +646,7 @@ class NetworkModel(object):
                             child_traffic_class = topology.node[u]['n_classes']
                             topology.node[u]['n_classes'] = topology.node[u]['n_classes'] + 1
                             topology.node[u]['parent_class'][child_traffic_class] = traffic_class
-                            topology.node[u]['min_delay'][child_traffic_class] = min_latency
+                            topology.node[u]['min_delay'][child_traffic_class] = latency - topology.edge[u][v]['delay'] 
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
                             #print "Class: " + repr(traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
 
@@ -653,14 +654,14 @@ class NetworkModel(object):
                         traffic_class = topology.node[v]['latencies'][latency]
                         if child_traffic_class is not None:
                             topology.node[u]['parent_class'][child_traffic_class] = traffic_class
-                            topology.node[u]['min_delay'][child_traffic_class] = min_latency
+                            topology.node[u]['min_delay'][child_traffic_class] = latency - topology.edge[u][v]['delay'] 
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
                             #print "Class: " + repr(child_traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
                         else:
                             child_traffic_class = topology.node[u]['n_classes']
                             topology.node[u]['n_classes'] = topology.node[u]['n_classes'] + 1
                             topology.node[u]['parent_class'][child_traffic_class] = traffic_class
-                            topology.node[u]['min_delay'][child_traffic_class] = min_latency
+                            topology.node[u]['min_delay'][child_traffic_class] = latency - topology.edge[u][v]['delay'] 
                             topology.node[u]['max_delay'][child_traffic_class] = path_latency
                             #print "Class: " + repr(traffic_class) + " @node: " + repr(u) + " is mapped to: " + repr(traffic_class) + " @node: " + repr(v)
                     if v == src:
@@ -782,6 +783,7 @@ class NetworkModel(object):
                         else:
                             cs.service_class_rate = [[rate_dist[x]*rates[y] for x in range(cs.num_classes)] for y in range(cs.service_population)]
                     cs.compute_prices(0.0)
+                    #print ("Price @node: " + str(v) + " is " +  str(cs.vm_prices[0]))
                     p = topology.graph['parent'][v]
                     if p in self.compSpot.keys(): #p != None:
                         cs_parent = self.compSpot[p]
